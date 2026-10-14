@@ -1,9 +1,5 @@
 # JobShield — cấu trúc dự án
 
-Trạng thái: **chỉ có khung thư mục và file rỗng**, chưa có ứng dụng chạy được.
-
-Nguồn yêu cầu: `prompt.txt` (giữ nguyên). Quy tắc làm việc và học kỹ thuật riêng cho dự án: `AGENTS.md`.
-
 ## Phân chia trách nhiệm
 
 - `frontend/`: Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, React Hook Form, Zod và TanStack Query. Có đủ trang public, người dùng và admin theo prompt; `(public)`, `(user)`, `(admin)` là route group, không xuất hiện trong URL. Layout hiện chỉ là file khung, chưa bảo vệ quyền truy cập.
