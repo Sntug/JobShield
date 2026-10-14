@@ -1,12 +1,14 @@
 # JobShield — cấu trúc dự án
 
+G1 đã được rà soát lại: [yêu cầu sản phẩm](docs/requirements.md), [kiến trúc](docs/architecture.md) và [hướng dẫn môi trường](docs/development.md). Frontend: Vitest 1 passed/3 todo, Chromium 2 passed và build đạt. Các route chưa triển khai trả 404 tiếng Việt; hai layout nhóm chỉ chuyển tiếp nội dung. Backend: Python 3.15.0 chỉ trong backend/.venv, 12 Pytest passed, dependency/lockfile được kiểm tra. Python toàn máy giữ nguyên; 7 high braces frontend vẫn hoãn. Chưa chuyển G2 hoặc triển khai API, Database và Docker.
+
 ## Phân chia trách nhiệm
 
-- `frontend/`: Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, React Hook Form, Zod và TanStack Query. Có đủ trang public, người dùng và admin theo prompt; `(public)`, `(user)`, `(admin)` là route group, không xuất hiện trong URL. Layout hiện chỉ là file khung, chưa bảo vệ quyền truy cập.
+- `frontend/`: Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, React Hook Form, Zod và TanStack Query. Có vị trí file cho đủ trang public, người dùng và admin; `(public)`, `(user)`, `(admin)` là route group, không xuất hiện trong URL. Chỉ trang chủ có shell; các trang sản phẩm còn là placeholder 404, chưa có bảo vệ quyền truy cập.
 - `backend/`: FastAPI/Pydantic, SQLAlchemy/Alembic và PostgreSQL. Tách route, schema, model, service; dành chỗ cho trích xuất text/ảnh/URL, OCR, rule engine, risk assessment, xác minh nhà tuyển dụng, báo cáo và LLM tùy chọn.
-- `frontend/tests/`, `frontend/e2e/`, `backend/tests/`: vị trí unit test, Playwright và Pytest. Có file khung cho các tình huống prompt yêu cầu, lỗi trích xuất, fallback khi thiếu LLM và các ranh giới bảo mật; chưa có nội dung test.
-- `compose.yaml`, các `Dockerfile`, `.dockerignore`, `.env.example`: chỉ dành vị trí cho Docker/Compose và cấu hình môi trường; chưa có nội dung hay secret.
-- `docs/`: file khung tài liệu kiến trúc, API và phát triển. Chưa cấu hình CI/CD hoặc Grafana vì chúng không nằm trong stack bắt buộc của prompt.
+- `frontend/tests/`, `frontend/e2e/`, `backend/tests/`: vị trí Vitest, Playwright và Pytest. Self-check môi trường và regression 404 đã chạy; ba unit test sản phẩm đang todo. Test nghiệp vụ và ranh giới API/Database/bảo mật chưa thực hiện.
+- `compose.yaml`, các `Dockerfile`, `.dockerignore`: file khung chưa có cấu hình. Các `.env.example` có giá trị minh họa cho frontend/backend, không có secret thật.
+- `docs/`: yêu cầu sản phẩm, kiến trúc, bài thực hành phát triển và kế hoạch giai đoạn; tài liệu API còn là file khung. Chưa cấu hình CI/CD hoặc Grafana vì chúng không nằm trong stack bắt buộc của prompt.
 
 ## Phân bổ các entity dự kiến
 
@@ -23,15 +25,17 @@
 
 ## Những phần sẽ thực hiện sau
 
-Các file code, manifest, cấu hình, fixture và tài liệu trong `docs/` đều đang rỗng. Chưa chọn phiên bản, cài dependency, sinh lockfile, cấu hình dịch vụ, viết migration, thêm dữ liệu mẫu hoặc thực thi test. Chưa thể chạy install/build/test/Docker từ khung này.
+Frontend shell và backend environment đã có manifest/lockfile/runners; đây chưa phải sản phẩm chạy xuyên suốt. Backend main/routes/models/migrations còn khung, chưa có server/API/DB thật. Settings chỉ thiết lập quy ước DATABASE_URL bắt buộc/riêng tư bằng dữ liệu minh họa. docs/api.md chưa có hợp đồng; auth, seed, nghiệp vụ, OCR/LLM và Docker chưa nghiệm thu. Build frontend đã đạt cho shell/placeholder, không chứng minh các chức năng đó hoạt động.
 
-Tailwind dành vị trí ở `postcss.config.mjs` và `src/app/globals.css`; chỉ thêm file cấu hình riêng nếu phiên bản được chọn cần nó. Component shadcn/ui sẽ được sinh vào `src/components/ui/` khi thực hiện bước giao diện; không tạo sẵn các component chưa được chọn sử dụng.
+Tailwind được nạp qua `postcss.config.mjs` và `src/app/globals.css`; shadcn Button đã có trong `src/components/ui/`. Chỉ thêm component được dùng ở giai đoạn tương ứng.
 
 Dữ liệu sẽ đặt ở `backend/app/seed/demo_data.json` và các fixture, phải được ghi rõ là dữ liệu tổng hợp minh họa. `services/ai/` dành chỗ cho interface provider, một provider LLM cấu hình được và prompt; chưa tích hợp hoặc gửi dữ liệu ra ngoài.
 
 Thực hiện từng phần theo yêu cầu tiếp theo của người dùng và quy tắc trong `AGENTS.md`.
 
-## Cây thư mục thực tế
+## Cây thư mục khung ban đầu
+
+Cây dưới đây mô tả lần khởi tạo. Khi bắt đầu G1 ngày 14/10/2026, `AGENTS.md` và `prompt.txt` không còn trên đĩa; quy tắc người dùng cung cấp trong chat vẫn áp dụng. Các tài liệu G1 và kế hoạch được thêm sau lần khởi tạo, không phải file ứng dụng đã triển khai.
 
 ```text
 JobShield/
