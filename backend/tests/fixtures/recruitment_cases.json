@@ -1,0 +1,561 @@
+{
+  "is_demo": true,
+  "usage": "test_only",
+  "description_vi": "Tình huống G2A tổng hợp; không phải seed DB, API response hoặc dữ liệu xác minh ngoài đời. Mọi doanh nghiệp, liên hệ, thời điểm và nguồn trong bộ này đều giả lập cho test.",
+  "policy_note_vi": "Nhãn sản phẩm và expected là mục tiêu kiểm thử, chưa phải kết quả engine đã chạy. Mã wire/quyền dữ liệu do người dùng chốt G2U. Chưa chốt score số hoặc công thức thiếu dữ kiện; G4 kiểm chứng bằng rule snapshot. null là chưa biết; khi extraction thất bại, chưa đánh giá risk/verification.",
+  "cases": [
+    {
+      "id": "complete",
+      "title_vi": "Tin đủ dữ kiện, liên hệ khớp nguồn DEMO",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Công ty Mẫu A (DEMO) tuyển Thực tập sinh kiểm thử. Lương: 4–6 triệu đồng/tháng. Địa điểm: Văn phòng DEMO. Hình thức: Thực tập bán thời gian. Email: tuyendung@mau-a.example. Điện thoại: 0000000000 (số giả DEMO). Website: https://mau-a.example/tuyen-dung. Yêu cầu: gửi CV và tham gia phỏng vấn. Không thu phí hoặc đặt cọc.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [
+        {
+          "name": "Công ty Mẫu A (DEMO)",
+          "is_demo": true,
+          "official_domains": [
+            "mau-a.example"
+          ],
+          "official_recruitment_pages": [
+            "https://mau-a.example/tuyen-dung"
+          ],
+          "official_contacts": [
+            "tuyendung@mau-a.example"
+          ],
+          "verified_at": "2026-10-14T00:00:00Z",
+          "sources": [
+            {
+              "id": "demo-source-a",
+              "url": "https://mau-a.example/tuyen-dung",
+              "label_vi": "Nguồn tuyển dụng tổng hợp DEMO A; không xác minh ngoài đời",
+              "is_demo": true,
+              "verified_at": "2026-10-14T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "job": {
+          "company_name": "Công ty Mẫu A (DEMO)",
+          "job_title": "Thực tập sinh kiểm thử",
+          "salary": "4–6 triệu đồng/tháng",
+          "location": "Văn phòng DEMO",
+          "employment_type": "Thực tập bán thời gian",
+          "contact_email": "tuyendung@mau-a.example",
+          "contact_phone": "0000000000",
+          "recruitment_website": "https://mau-a.example/tuyen-dung",
+          "application_requirements": "gửi CV và tham gia phỏng vấn",
+          "required_payments": "Không thu phí hoặc đặt cọc",
+          "suspicious_instructions": null
+        },
+        "indicators": [],
+        "risk_label_vi": "Ít dấu hiệu rủi ro",
+        "verification_label_vi": "Khớp nguồn đã xác minh",
+        "finding_vi": "Email và trang tuyển dụng khớp nguồn DEMO A. Chưa có dấu hiệu kích hoạt trong nội dung; khớp nguồn không bảo đảm tin thật.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [
+            "demo-source-a"
+          ],
+          "missing_vi": []
+        },
+        "actions_vi": [
+          "Kiểm tra lại tin trên trang tuyển dụng được đối chiếu.",
+          "Xác nhận vị trí với kênh tuyển dụng đã biết trước khi gửi hồ sơ."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "upfront_fee",
+      "title_vi": "Thu phí và đặt cọc trước phỏng vấn",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Công ty Mẫu Thu Phí (DEMO) tuyển Nhân viên nhập liệu. Lương: 8 triệu đồng/tháng. Làm online bán thời gian. Email: nhanviec@thu-phi.invalid. Yêu cầu: đóng phí tuyển dụng 500.000 đồng để nhận việc. Đặt cọc 1.000.000 đồng trước phỏng vấn. Chuyển tiền vào tài khoản cá nhân để giữ chỗ.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [],
+      "expected": {
+        "job": {
+          "company_name": "Công ty Mẫu Thu Phí (DEMO)",
+          "job_title": "Nhân viên nhập liệu",
+          "salary": "8 triệu đồng/tháng",
+          "location": "online",
+          "employment_type": "bán thời gian",
+          "contact_email": "nhanviec@thu-phi.invalid",
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": null,
+          "required_payments": "đóng phí tuyển dụng 500.000 đồng để nhận việc; Đặt cọc 1.000.000 đồng trước phỏng vấn",
+          "suspicious_instructions": "Chuyển tiền vào tài khoản cá nhân để giữ chỗ"
+        },
+        "indicators": [
+          {
+            "category_vi": "Phí tuyển dụng trước",
+            "matched_quote": "đóng phí tuyển dụng 500.000 đồng để nhận việc"
+          },
+          {
+            "category_vi": "Đặt cọc trước phỏng vấn",
+            "matched_quote": "Đặt cọc 1.000.000 đồng trước phỏng vấn"
+          },
+          {
+            "category_vi": "Yêu cầu chuyển tiền",
+            "matched_quote": "Chuyển tiền vào tài khoản cá nhân để giữ chỗ"
+          }
+        ],
+        "risk_label_vi": "Rủi ro cao",
+        "verification_label_vi": "Chưa xác minh",
+        "finding_vi": "Có yêu cầu thanh toán rõ trong tin; chưa có nguồn độc lập xác minh nhà tuyển dụng hoặc vụ gian lận.",
+        "evidence": {
+          "quotes": [
+            "đóng phí tuyển dụng 500.000 đồng để nhận việc",
+            "Đặt cọc 1.000.000 đồng trước phỏng vấn",
+            "Chuyển tiền vào tài khoản cá nhân để giữ chỗ"
+          ],
+          "employer_source_ids": [],
+          "missing_vi": [
+            "Nguồn nhà tuyển dụng đã xác minh"
+          ]
+        },
+        "actions_vi": [
+          "Tạm dừng thanh toán phí hoặc đặt cọc.",
+          "Yêu cầu giải thích bằng văn bản và đối chiếu kênh tuyển dụng độc lập."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "impersonation",
+      "title_vi": "Tự xưng employer DEMO, liên hệ xung đột",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Công ty Mẫu A (DEMO) tuyển Nhân viên hỗ trợ. Lương: 7 triệu đồng/tháng. Làm online toàn thời gian. Chúng tôi là phòng tuyển dụng Công ty Mẫu A (DEMO), chỉ nhận hồ sơ tại tuyendung@mau-a-nhanh.invalid. Chỉ liên hệ qua nhóm chat kín; không liên hệ email trên website công ty. Yêu cầu: gửi CV.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [
+        {
+          "name": "Công ty Mẫu A (DEMO)",
+          "is_demo": true,
+          "official_domains": [
+            "mau-a.example"
+          ],
+          "official_recruitment_pages": [
+            "https://mau-a.example/tuyen-dung"
+          ],
+          "official_contacts": [
+            "tuyendung@mau-a.example"
+          ],
+          "verified_at": "2026-10-14T00:00:00Z",
+          "sources": [
+            {
+              "id": "demo-source-a",
+              "url": "https://mau-a.example/tuyen-dung",
+              "label_vi": "Nguồn tuyển dụng tổng hợp DEMO A; không xác minh ngoài đời",
+              "is_demo": true,
+              "verified_at": "2026-10-14T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "job": {
+          "company_name": "Công ty Mẫu A (DEMO)",
+          "job_title": "Nhân viên hỗ trợ",
+          "salary": "7 triệu đồng/tháng",
+          "location": "online",
+          "employment_type": "toàn thời gian",
+          "contact_email": "tuyendung@mau-a-nhanh.invalid",
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": "gửi CV",
+          "required_payments": null,
+          "suspicious_instructions": "Chỉ liên hệ qua nhóm chat kín; không liên hệ email trên website công ty"
+        },
+        "indicators": [
+          {
+            "category_vi": "Chỉ dấu mạo danh",
+            "matched_quote": "Chúng tôi là phòng tuyển dụng Công ty Mẫu A (DEMO), chỉ nhận hồ sơ tại tuyendung@mau-a-nhanh.invalid"
+          },
+          {
+            "category_vi": "Kênh liên hệ đáng ngờ",
+            "matched_quote": "Chỉ liên hệ qua nhóm chat kín; không liên hệ email trên website công ty"
+          }
+        ],
+        "risk_label_vi": "Rủi ro cao",
+        "verification_label_vi": "Thông tin xung đột",
+        "finding_vi": "Email trong tin khác email/domain của nguồn DEMO A; có chỉ dấu mạo danh, chưa kết luận gian lận.",
+        "evidence": {
+          "quotes": [
+            "Chúng tôi là phòng tuyển dụng Công ty Mẫu A (DEMO), chỉ nhận hồ sơ tại tuyendung@mau-a-nhanh.invalid",
+            "Chỉ liên hệ qua nhóm chat kín; không liên hệ email trên website công ty"
+          ],
+          "employer_source_ids": [
+            "demo-source-a"
+          ],
+          "missing_vi": []
+        },
+        "actions_vi": [
+          "Đối chiếu với tuyendung@mau-a.example trong bài DEMO.",
+          "Xác nhận người tuyển dụng qua nguồn độc lập trước khi gửi hồ sơ."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "missing_information",
+      "title_vi": "Tin thiếu thông tin, không suy ra an toàn",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Cần người làm online, liên hệ qua nhóm chat. (Tin tổng hợp DEMO)",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [],
+      "expected": {
+        "job": {
+          "company_name": null,
+          "job_title": null,
+          "salary": null,
+          "location": "online",
+          "employment_type": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": null,
+          "required_payments": null,
+          "suspicious_instructions": null
+        },
+        "indicators": [],
+        "risk_label_vi": "Không đủ thông tin",
+        "verification_label_vi": "Không đủ dữ liệu",
+        "finding_vi": "Không đủ thông tin — chưa thể đánh giá; hãy bổ sung vị trí, công ty và kênh tuyển dụng.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [],
+          "missing_vi": [
+            "Tên công ty",
+            "Vị trí tuyển dụng",
+            "Mức lương",
+            "Email/domain hoặc kênh tuyển dụng đối chiếu được",
+            "Nguồn nhà tuyển dụng"
+          ]
+        },
+        "actions_vi": [
+          "Bổ sung tên công ty, vị trí, lương và kênh tuyển dụng có thể kiểm tra."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "suspicious_unverified",
+      "title_vi": "Nhiều dấu hiệu, chưa có chứng cứ được xác minh",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Nhóm Việc Mẫu (DEMO) tuyển Cộng tác viên nhiệm vụ online, bán thời gian. Email: viec@nhom-viec.invalid. Cam kết kiếm 50 triệu đồng mỗi ngày chỉ với 10 phút, không cần kinh nghiệm. Nạp 2.000.000 đồng để mở nhiệm vụ nhận hoa hồng. Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [],
+      "expected": {
+        "job": {
+          "company_name": "Nhóm Việc Mẫu (DEMO)",
+          "job_title": "Cộng tác viên nhiệm vụ",
+          "salary": "50 triệu đồng mỗi ngày",
+          "location": "online",
+          "employment_type": "bán thời gian",
+          "contact_email": "viec@nhom-viec.invalid",
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": "không cần kinh nghiệm",
+          "required_payments": "Nạp 2.000.000 đồng để mở nhiệm vụ nhận hoa hồng",
+          "suspicious_instructions": "Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc"
+        },
+        "indicators": [
+          {
+            "category_vi": "Hứa thu nhập phi thực tế",
+            "matched_quote": "Cam kết kiếm 50 triệu đồng mỗi ngày chỉ với 10 phút, không cần kinh nghiệm"
+          },
+          {
+            "category_vi": "Nhiệm vụ có nạp tiền",
+            "matched_quote": "Nạp 2.000.000 đồng để mở nhiệm vụ nhận hoa hồng"
+          },
+          {
+            "category_vi": "Yêu cầu dữ liệu nhạy cảm bất thường",
+            "matched_quote": "Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc"
+          }
+        ],
+        "risk_label_vi": "Rủi ro cao",
+        "verification_label_vi": "Chưa xác minh",
+        "finding_vi": "Trích đoạn hỗ trợ các dấu hiệu rủi ro; không có nguồn độc lập hoặc quyết định kiểm duyệt xác nhận gian lận.",
+        "evidence": {
+          "quotes": [
+            "Cam kết kiếm 50 triệu đồng mỗi ngày chỉ với 10 phút, không cần kinh nghiệm",
+            "Nạp 2.000.000 đồng để mở nhiệm vụ nhận hoa hồng",
+            "Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc"
+          ],
+          "employer_source_ids": [],
+          "missing_vi": [
+            "Nguồn độc lập đã xác minh",
+            "Quyết định kiểm duyệt có chứng cứ"
+          ]
+        },
+        "actions_vi": [
+          "Không nạp tiền theo yêu cầu trong tin.",
+          "Không gửi mã OTP hoặc giấy tờ nhạy cảm qua chat.",
+          "Tìm nguồn nhà tuyển dụng có thể đối chiếu."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "ocr_failure",
+      "title_vi": "Ảnh không đọc được, cho nhập văn bản",
+      "is_demo": true,
+      "input": {
+        "kind": "image",
+        "text": null,
+        "source_url": null,
+        "failure_vi": "Ảnh DEMO bị mờ, không đọc được chữ."
+      },
+      "employer_records": [],
+      "expected": {
+        "job": null,
+        "indicators": [],
+        "risk_label_vi": null,
+        "verification_label_vi": null,
+        "finding_vi": "Chưa trích xuất được văn bản; chưa có kết quả risk hoặc verification.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [],
+          "missing_vi": [
+            "Văn bản người dùng xác nhận"
+          ]
+        },
+        "actions_vi": [
+          "Dán hoặc nhập lại văn bản tuyển dụng.",
+          "Kiểm tra nội dung đã nhập trước khi phân tích."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "url_blocked",
+      "title_vi": "URL yêu cầu đăng nhập, không vượt hạn chế",
+      "is_demo": true,
+      "input": {
+        "kind": "url",
+        "text": null,
+        "source_url": "https://tin-demo.example/dang-nhap",
+        "failure_vi": "Trang DEMO yêu cầu đăng nhập; không trích xuất nội dung."
+      },
+      "employer_records": [],
+      "expected": {
+        "job": null,
+        "indicators": [],
+        "risk_label_vi": null,
+        "verification_label_vi": null,
+        "finding_vi": "Không lấy được nội dung công khai; không dựng kết quả phân tích hoặc vượt yêu cầu đăng nhập.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [],
+          "missing_vi": [
+            "Văn bản người dùng xác nhận"
+          ]
+        },
+        "actions_vi": [
+          "Dán văn bản bạn được phép sử dụng vào ô phân tích."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "same_name",
+      "title_vi": "Hai doanh nghiệp DEMO cùng tên",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Công ty Mẫu A (DEMO) tuyển Nhân viên hỗ trợ. Lương: 7 triệu đồng/tháng. Làm online toàn thời gian. Yêu cầu: gửi CV. Không thu phí. Không cung cấp email hoặc website.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [
+        {
+          "name": "Công ty Mẫu A (DEMO)",
+          "is_demo": true,
+          "official_domains": [
+            "mau-a.example"
+          ],
+          "official_recruitment_pages": [
+            "https://mau-a.example/tuyen-dung"
+          ],
+          "official_contacts": [
+            "tuyendung@mau-a.example"
+          ],
+          "verified_at": "2026-10-14T00:00:00Z",
+          "sources": [
+            {
+              "id": "demo-source-a",
+              "url": "https://mau-a.example/tuyen-dung",
+              "label_vi": "Nguồn tuyển dụng tổng hợp DEMO A; không xác minh ngoài đời",
+              "is_demo": true,
+              "verified_at": "2026-10-14T00:00:00Z"
+            }
+          ]
+        },
+        {
+          "name": "Công ty Mẫu A (DEMO)",
+          "is_demo": true,
+          "official_domains": [
+            "mau-b.example"
+          ],
+          "official_recruitment_pages": [
+            "https://mau-b.example/viec-lam"
+          ],
+          "official_contacts": [
+            "tuyendung@mau-b.example"
+          ],
+          "verified_at": "2026-10-14T00:00:00Z",
+          "sources": [
+            {
+              "id": "demo-source-b",
+              "url": "https://mau-b.example/viec-lam",
+              "label_vi": "Nguồn tổng hợp DEMO B cùng tên; không xác minh ngoài đời",
+              "is_demo": true,
+              "verified_at": "2026-10-14T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "job": {
+          "company_name": "Công ty Mẫu A (DEMO)",
+          "job_title": "Nhân viên hỗ trợ",
+          "salary": "7 triệu đồng/tháng",
+          "location": "online",
+          "employment_type": "toàn thời gian",
+          "contact_email": null,
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": "gửi CV",
+          "required_payments": "Không thu phí",
+          "suspicious_instructions": null
+        },
+        "indicators": [],
+        "risk_label_vi": "Không đủ thông tin",
+        "verification_label_vi": "Chưa xác minh",
+        "finding_vi": "Hai nguồn DEMO có tên giống nhau; không có contact/domain để chọn bản ghi phù hợp.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [
+            "demo-source-a",
+            "demo-source-b"
+          ],
+          "missing_vi": [
+            "Liên hệ hoặc domain phân biệt doanh nghiệp"
+          ]
+        },
+        "actions_vi": [
+          "Yêu cầu email/domain hoặc trang tuyển dụng để phân biệt hai nguồn DEMO."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    },
+    {
+      "id": "insufficient_contact",
+      "title_vi": "Có tên employer DEMO, liên hệ không đối chiếu được",
+      "is_demo": true,
+      "input": {
+        "kind": "text",
+        "text": "Công ty Mẫu A (DEMO) tuyển Thực tập sinh kiểm thử. Lương: 4 triệu đồng/tháng. Địa điểm: Văn phòng DEMO. Hình thức: Thực tập bán thời gian. Yêu cầu: gửi CV. Không thu phí. Liên hệ tài khoản chat “Tuyển dụng DEMO”, không có email hoặc website.",
+        "source_url": null,
+        "failure_vi": null
+      },
+      "employer_records": [
+        {
+          "name": "Công ty Mẫu A (DEMO)",
+          "is_demo": true,
+          "official_domains": [
+            "mau-a.example"
+          ],
+          "official_recruitment_pages": [
+            "https://mau-a.example/tuyen-dung"
+          ],
+          "official_contacts": [
+            "tuyendung@mau-a.example"
+          ],
+          "verified_at": "2026-10-14T00:00:00Z",
+          "sources": [
+            {
+              "id": "demo-source-a",
+              "url": "https://mau-a.example/tuyen-dung",
+              "label_vi": "Nguồn tuyển dụng tổng hợp DEMO A; không xác minh ngoài đời",
+              "is_demo": true,
+              "verified_at": "2026-10-14T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "job": {
+          "company_name": "Công ty Mẫu A (DEMO)",
+          "job_title": "Thực tập sinh kiểm thử",
+          "salary": "4 triệu đồng/tháng",
+          "location": "Văn phòng DEMO",
+          "employment_type": "Thực tập bán thời gian",
+          "contact_email": null,
+          "contact_phone": null,
+          "recruitment_website": null,
+          "application_requirements": "gửi CV",
+          "required_payments": "Không thu phí",
+          "suspicious_instructions": null
+        },
+        "indicators": [],
+        "risk_label_vi": "Không đủ thông tin",
+        "verification_label_vi": "Chưa xác minh",
+        "finding_vi": "Tên giống một bản ghi DEMO nhưng tên hiển thị chat không đủ đối chiếu; không tự suy ra matched hoặc conflicting.",
+        "evidence": {
+          "quotes": [],
+          "employer_source_ids": [
+            "demo-source-a"
+          ],
+          "missing_vi": [
+            "Email/domain tuyển dụng đối chiếu được"
+          ]
+        },
+        "actions_vi": [
+          "Yêu cầu email/domain tuyển dụng và đối chiếu nguồn DEMO đã cho."
+        ],
+        "limitations_vi": "Dữ liệu tổng hợp DEMO. Nguồn chỉ được đối chiếu trong bài kiểm tra; không chứng minh tin tuyển dụng ngoài đời là thật hoặc gian lận.",
+        "fraud_confirmed": false,
+        "publish_warning": false
+      }
+    }
+  ]
+}
