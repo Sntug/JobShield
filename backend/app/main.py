@@ -60,7 +60,7 @@ def readiness(response: Response) -> Dict[str, Any]:
         engine = create_engine(
             settings.database_url.get_secret_value(),
             pool_pre_ping=True,
-            connect_args={"connect_timeout": 5},
+            connect_args={"connect_timeout": 10},
         )
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
@@ -70,15 +70,18 @@ def readiness(response: Response) -> Dict[str, Any]:
         }
     except SQLAlchemyError as exc:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        detail_msg = str(exc.orig) if hasattr(exc, "orig") else str(exc)
         return {
             "status": "not_ready",
             "database": "disconnected",
             "message": "Không thể kết nối cơ sở dữ liệu",
+            "detail": detail_msg,
         }
-    except Exception:
+    except Exception as exc:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "not_ready",
             "database": "error",
             "message": "Lỗi kết nối kiểm tra database",
+            "detail": str(exc),
         }
