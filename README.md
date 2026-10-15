@@ -1,6 +1,8 @@
 # JobShield — cấu trúc dự án
 
-G1 đã được rà soát lại: [yêu cầu sản phẩm](docs/requirements.md), [kiến trúc](docs/architecture.md) và [hướng dẫn môi trường](docs/development.md). Frontend: Vitest 1 passed/3 todo, Chromium 2 passed và build đạt. Các route chưa triển khai trả 404 tiếng Việt; hai layout nhóm chỉ chuyển tiếp nội dung. Backend: Python 3.15.0 chỉ trong backend/.venv, 12 Pytest passed, dependency/lockfile được kiểm tra. Python toàn máy giữ nguyên; 7 high braces frontend vẫn hoãn. Chưa chuyển G2 hoặc triển khai API, Database và Docker.
+Đọc [kế hoạch bàn giao theo tính năng](docs/superpowers/plans/2026-10-15-jobshield-delivery-plan.md), bắt đầu tại phiếu R0.1. Quy trình mới đưa Docker/CI/staging lên sớm, làm luồng phân tích văn bản cho khách trước tài khoản; mỗi phiếu có mục tiêu, tiêu chí nghiệm thu, bằng chứng và phần tự học. Đây là thay đổi kế hoạch, chưa triển khai hạ tầng hoặc chức năng.
+
+Trạng thái ngày 15/10/2026: G1 có nền toolchain/shell; G2A có 9 tình huống tổng hợp và test fixture; ERD/quyền/vòng đời dữ liệu đã được thiết kế trong [kiến trúc](docs/architecture.md). API contract, backend/DB thật, Docker và luồng sản phẩm chưa triển khai. Kết quả lịch sử G2: backend 16 passed, Vitest 2 passed/3 todo; frontend full typecheck có lỗi file sinh trùng, lint và nhánh dependency braces còn tồn đọng. Chưa chạy lại các kiểm tra đó trong lượt thiết kế kế hoạch. [Yêu cầu sản phẩm](docs/requirements.md) giữ đích đầy đủ; [hướng dẫn môi trường](docs/development.md) giữ bài thực hành G1.
 
 ## Phân chia trách nhiệm
 
@@ -8,7 +10,7 @@ G1 đã được rà soát lại: [yêu cầu sản phẩm](docs/requirements.md
 - `backend/`: FastAPI/Pydantic, SQLAlchemy/Alembic và PostgreSQL. Tách route, schema, model, service; dành chỗ cho trích xuất text/ảnh/URL, OCR, rule engine, risk assessment, xác minh nhà tuyển dụng, báo cáo và LLM tùy chọn.
 - `frontend/tests/`, `frontend/e2e/`, `backend/tests/`: vị trí Vitest, Playwright và Pytest. Self-check môi trường và regression 404 đã chạy; ba unit test sản phẩm đang todo. Test nghiệp vụ và ranh giới API/Database/bảo mật chưa thực hiện.
 - `compose.yaml`, các `Dockerfile`, `.dockerignore`: file khung chưa có cấu hình. Các `.env.example` có giá trị minh họa cho frontend/backend, không có secret thật.
-- `docs/`: yêu cầu sản phẩm, kiến trúc, bài thực hành phát triển và kế hoạch giai đoạn; tài liệu API còn là file khung. Chưa cấu hình CI/CD hoặc Grafana vì chúng không nằm trong stack bắt buộc của prompt.
+- `docs/`: yêu cầu sản phẩm, kiến trúc, bài thực hành và kế hoạch bàn giao; tài liệu API còn là file khung. CI/CD, staging và theo dõi lỗi đã vào roadmap mới, chưa cấu hình. Thư mục này đang được ignore theo lựa chọn hiện có, nên tài liệu chỉ lưu local; chưa thêm Grafana/Prometheus.
 
 ## Phân bổ các entity dự kiến
 
