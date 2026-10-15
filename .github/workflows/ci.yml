@@ -13,6 +13,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      UV_PYTHON_DOWNLOADS: "manual"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,7 +26,7 @@ jobs:
           version: "latest"
 
       - name: Set up Python
-        run: uv python install
+        run: uv python install --python-downloads manual
 
       - name: Install dependencies
         run: uv sync --frozen
