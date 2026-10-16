@@ -21,7 +21,7 @@ dev = [
 
 [tool.uv]
 package = false
-python-downloads = "never"
+python-downloads = "manual"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
