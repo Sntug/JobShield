@@ -21,7 +21,7 @@ def test_healthz_endpoint_returns_healthy() -> None:
 
 
 def test_ready_endpoint_without_db_returns_503(monkeypatch) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "")
     response = client.get("/ready")
     assert response.status_code == 503
     data = response.json()

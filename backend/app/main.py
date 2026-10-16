@@ -68,20 +68,17 @@ def readiness(response: Response) -> Dict[str, Any]:
             "status": "ready",
             "database": "connected",
         }
-    except SQLAlchemyError as exc:
+    except SQLAlchemyError:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        detail_msg = str(exc.orig) if hasattr(exc, "orig") else str(exc)
         return {
             "status": "not_ready",
             "database": "disconnected",
             "message": "Không thể kết nối cơ sở dữ liệu",
-            "detail": detail_msg,
         }
-    except Exception as exc:
+    except Exception:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "not_ready",
             "database": "error",
             "message": "Lỗi kết nối kiểm tra database",
-            "detail": str(exc),
         }
