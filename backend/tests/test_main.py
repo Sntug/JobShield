@@ -37,9 +37,11 @@ def test_request_tracing_middleware_generates_id_and_commit() -> None:
     assert "X-Commit-SHA" in response.headers
 
 
-def test_request_tracing_ignores_incoming_client_id_and_logs(caplog) -> None:
+def test_request_tracing_ignores_incoming_client_id_and_logs(caplog, monkeypatch) -> None:
     import logging
+    from app.main import logger
 
+    monkeypatch.setattr(logger, "propagate", True)
     custom_id = "test-request-id-12345"
     with caplog.at_level(logging.INFO, logger="uvicorn.error"):
         response = client.get("/healthz", headers={"X-Request-ID": custom_id})
