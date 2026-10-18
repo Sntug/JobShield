@@ -267,7 +267,65 @@ JobShield/
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
-├── README.md
-├── compose.yaml
-└── prompt.txt
 ```
+
+## Vận hành và kiểm thử lát cắt R1.1 (Guest Text Analysis)
+
+Lát cắt R1.1 cho phép người dùng khách phân tích văn bản tin tuyển dụng trực tiếp qua giao diện `/analyze` và API `/api/v1/analyses`.
+
+### 1. Cấu hình môi trường (.env)
+
+**Backend (`backend/.env`):**
+```bash
+# PostgreSQL kết nối chính
+DATABASE_URL=postgresql+psycopg://username:password@localhost:5432/jobshield
+
+# (Tùy chọn) PostgreSQL test container biệt lập cho integration tests
+POSTGRES_TEST_URL=postgresql+psycopg://r11_review:r11_local_test@127.0.0.1:55432/jobshield_r11_review
+
+# Allowlist các domain frontend gọi API
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+```
+
+**Frontend (`frontend/.env.local`):**
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+### 2. Khởi chạy ứng dụng
+
+**Chạy Backend:**
+```bash
+cd backend
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Chạy Frontend:**
+```bash
+cd frontend
+npm run dev
+# Truy cập trình duyệt: http://localhost:3000/analyze
+```
+
+### 3. Kiểm thử tự động (Verification)
+
+```bash
+# Kiểm thử toàn bộ Backend (unit + API + rule engine + migrations + test DB container):
+cd backend && uv run pytest
+
+# Kiểm thử Frontend Unit (Vitest) và Lint / Typecheck:
+cd frontend && npm test && npm run lint && npm run typecheck
+
+# Kiểm thử E2E Browser (Playwright):
+cd frontend && npm run test:e2e
+```
+
+### 4. Dọn dẹp dữ liệu phiên hết hạn (Data Retention Cleanup)
+
+- **Nguyên tắc:** Phiên khách có TTL cố định 24 giờ. Bản ghi `Analysis` kế thừa `expires_at` của phiên và bị cascade xóa khi phiên bị xóa.
+- **Lệnh CLI dọn dẹp:**
+  ```bash
+  cd backend && python -m app.cli.cleanup
+  ```
+- **Lưu ý triển khai production:** Ứng dụng **không** chạy vòng lặp scheduler ngầm trong web process (để tránh lãng phí tài nguyên và xung đột đa worker). Trước khi đưa lên production, hạ tầng vận hành **bắt buộc phải cấu hình lịch chạy bên ngoài** (ví dụ: Linux `cron`, `systemd timer`, Kubernetes `CronJob`, hoặc Supabase/AWS scheduled task) để thực thi định kỳ lệnh CLI trên (khuyến nghị chạy mỗi giờ một lần: `0 * * * *`).

@@ -17,7 +17,6 @@ test("trang shell có styles và nút nhận focus bằng bàn phím", async ({ 
 
 test("route chưa triển khai trả 404 tiếng Việt thay vì lỗi server", async ({ page }) => {
   const routes = [
-    "/analyze",
     "/analysis/g1-example",
     "/verify-employer",
     "/safety",
