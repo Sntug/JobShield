@@ -140,7 +140,8 @@ jobs:
       - name: Start Backend Service
         working-directory: backend
         run: |
-          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          # A long-lived uv run holds the cache lock and blocks setup-uv's post-job prune.
+          .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
 
       - name: Wait for Backend Readiness
