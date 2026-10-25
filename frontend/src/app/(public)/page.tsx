@@ -34,10 +34,12 @@ export default function HomePage() {
         Các chức năng phân tích và xác minh chưa được triển khai.
       </p>
 
-      <div className="mt-6 flex flex-col items-start gap-3">
-        <Button type="button" onClick={handleCheckApi} disabled={loading}>
-          {loading ? "Đang kiểm tra..." : "Nút kiểm tra giao diện"}
-        </Button>
+      <div className="mt-6 space-y-3">
+        <div>
+          <Button type="button" onClick={handleCheckApi} disabled={loading}>
+            {loading ? "Đang kiểm tra..." : "Nút kiểm tra giao diện"}
+          </Button>
+        </div>
         {result && (
           <p className="rounded bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
             {result}

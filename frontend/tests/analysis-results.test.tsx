@@ -1,3 +1,76 @@
-import { test } from "vitest";
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { AnalysisResults } from "@/components/analysis/analysis-results";
+import { AnalysisResponse } from "@/types/api";
 
-test.todo("G5: hiển thị kết quả phân tích, bằng chứng và thông tin còn thiếu");
+const mockAnalysis: AnalysisResponse = {
+  id: "test-uuid-12345",
+  risk_label_vi: "Rủi ro cao",
+  verification_label_vi: "Chưa xác minh",
+  finding_vi: "Có yêu cầu thanh toán rõ trong tin tuyển dụng.",
+  job: {
+    company_name: "Công ty Mẫu Thu Phí",
+    job_title: "Nhân viên nhập liệu",
+    salary: "8 triệu đồng/tháng",
+    location: "online",
+    employment_type: "bán thời gian",
+    contact_email: "nhanviec@thu-phi.invalid",
+    contact_phone: null,
+    recruitment_website: null,
+    application_requirements: null,
+    required_payments: "đóng phí tuyển dụng 500.000 đồng để nhận việc",
+    suspicious_instructions: null,
+  },
+  indicators: [
+    {
+      category_vi: "Phí tuyển dụng trước",
+      rule_id: "RULE_UPFRONT_FEE",
+      matched_quote: "đóng phí tuyển dụng 500.000 đồng để nhận việc",
+    },
+  ],
+  evidence: {
+    matched_sources: [],
+    missing_vi: ["Nguồn nhà tuyển dụng đã xác minh"],
+    limitations_vi: ["Dữ liệu tổng hợp DEMO."],
+    is_demo: true,
+  },
+  actions_vi: ["Tạm dừng thanh toán phí hoặc đặt cọc."],
+  engine_version: "0.1.0",
+  rules_version: "2026.10",
+  created_at: "2026-10-17T15:00:00Z",
+  expires_at: "2026-10-18T15:00:00Z",
+};
+
+describe("AnalysisResults", () => {
+  it("renders risk badges, finding, indicators with verbatim quote, and 11 fields", () => {
+    const handleReset = vi.fn();
+    render(<AnalysisResults analysis={mockAnalysis} onReset={handleReset} />);
+
+    expect(screen.getByText(/Mức độ: Rủi ro cao/i)).toBeInTheDocument();
+    expect(screen.getByText(/Xác minh: Chưa xác minh/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dữ liệu DEMO/i)).toBeInTheDocument();
+    expect(screen.getByText("Có yêu cầu thanh toán rõ trong tin tuyển dụng.")).toBeInTheDocument();
+
+    // Verbatim quote (appears in indicator badge and required_payments field)
+    const quotes = screen.getAllByText(/đóng phí tuyển dụng 500.000 đồng để nhận việc/i);
+    expect(quotes.length).toBeGreaterThanOrEqual(1);
+
+    // 11 fields
+    expect(screen.getByText("Công ty Mẫu Thu Phí")).toBeInTheDocument();
+    expect(screen.getByText("Nhân viên nhập liệu")).toBeInTheDocument();
+    expect(screen.getByText("8 triệu đồng/tháng")).toBeInTheDocument();
+
+    // Missing info & unverified source
+    expect(screen.getByText("Nguồn nhà tuyển dụng đã xác minh")).toBeInTheDocument();
+    expect(screen.getByText(/Chưa xác minh qua nguồn độc lập/i)).toBeInTheDocument();
+
+    // Action
+    expect(screen.getByText("Tạm dừng thanh toán phí hoặc đặt cọc.")).toBeInTheDocument();
+
+    // Reset button
+    const resetBtn = screen.getByRole("button", { name: /Phân tích tin khác/i });
+    fireEvent.click(resetBtn);
+    expect(handleReset).toHaveBeenCalledTimes(1);
+  });
+});

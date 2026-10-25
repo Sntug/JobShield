@@ -8,13 +8,29 @@ on:
 
 jobs:
   backend-check:
-    name: Backend Pytest & Imports
+    name: Backend Pytest & PostgreSQL Integration
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: jobshield_ci_backend
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       UV_PYTHON_DOWNLOADS: "manual"
+      # Chống skip: Biến này bắt buộc test_postgres_integration.py phải chạy hoặc fail, không được skip
+      POSTGRES_TEST_URL: "postgresql+psycopg://postgres:postgres_ci_password@localhost:5432/jobshield_ci_backend"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,11 +47,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run Pytest
-        run: uv run pytest
+      - name: Run Pytest (Unit & PostgreSQL Integration)
+        run: uv run pytest -v
 
   frontend-check:
-    name: Frontend Typecheck & Vitest
+    name: Frontend Lint, Typecheck & Vitest
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,3 +78,94 @@ jobs:
 
       - name: Run Vitest
         run: npm test
+
+  e2e-check:
+    name: Playwright E2E & Live API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: jobshield_ci_e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      UV_PYTHON_DOWNLOADS: "manual"
+      DATABASE_URL: "postgresql+psycopg://postgres:postgres_ci_password@localhost:5432/jobshield_ci_e2e"
+      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        working-directory: backend
+        run: uv python install
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Database Migrations
+        working-directory: backend
+        run: uv run alembic upgrade head
+
+      - name: Start Backend Service
+        working-directory: backend
+        run: |
+          # A long-lived uv run holds the cache lock and blocks setup-uv's post-job prune.
+          .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          echo $! > /tmp/backend.pid
+
+      - name: Wait for Backend Readiness
+        run: |
+          timeout=30
+          until curl -s -f --connect-timeout 2 --max-time 5 http://127.0.0.1:8000/ready | grep -q "ready"; do
+            if [ $timeout -le 0 ]; then
+              echo "Lỗi: Backend không sẵn sàng sau 30 giây! Nhật ký backend:"
+              cat /tmp/backend.log
+              exit 1
+            fi
+            sleep 1
+            timeout=$((timeout - 1))
+          done
+          echo "Backend đã kết nối DB và sẵn sàng nhận request."
+
+      - name: Run Playwright E2E Tests
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: |
+          if [ -f /tmp/backend.log ]; then
+            echo "=== Nhật ký Backend khi có lỗi ==="
+            cat /tmp/backend.log
+          fi
