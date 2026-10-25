@@ -329,3 +329,11 @@ cd frontend && npm run test:e2e
   cd backend && python -m app.cli.cleanup
   ```
 - **Lưu ý triển khai production:** Ứng dụng **không** chạy vòng lặp scheduler ngầm trong web process (để tránh lãng phí tài nguyên và xung đột đa worker). Trước khi đưa lên production, hạ tầng vận hành **bắt buộc phải cấu hình lịch chạy bên ngoài** (ví dụ: Linux `cron`, `systemd timer`, Kubernetes `CronJob`, hoặc Supabase/AWS scheduled task) để thực thi định kỳ lệnh CLI trên (khuyến nghị chạy mỗi giờ một lần: `0 * * * *`).
+
+**Lịch dev/test:** `.github/workflows/cleanup-dev.yml` dùng lại CLI trên, dự kiến chạy **02:17 mỗi ngày giờ Việt Nam** (19:17 UTC ngày trước). GitHub chỉ kích hoạt lịch khi workflow đã có trên nhánh mặc định; lịch có thể bị trễ. Workflow này chỉ chấp nhận connection của project Supabase dev/test `JobShield` (`vleyapvlgnukcawgxozg`), không dùng connection production.
+
+1. Sau khi người sở hữu duyệt việc cấp quyền DB cho GitHub Actions và xóa dữ liệu hết hạn, lưu connection dev/test trong Actions secret `DEV_DATABASE_URL`. Không ghi connection vào YAML hoặc log. URI phải đúng định dạng connection hiện tại: driver `postgresql+psycopg`, host `aws-0-ap-southeast-1.pooler.supabase.com`, port `5432`, database `postgres`, username `postgres.vleyapvlgnukcawgxozg`. Query parameter duy nhất được chấp nhận là `sslmode=require`, `verify-ca` hoặc `verify-full`; nếu không có thì workflow bật TLS bằng `PGSSLMODE=require`.
+2. Khi workflow khả dụng trong Actions, chọn **Cleanup expired guest sessions (dev) → Run workflow** và để `purge` tắt. Lần chạy này chỉ xác minh DB và đếm dữ liệu hết hạn. Thiếu secret hoặc sai DB phải làm job fail trước bước xóa.
+3. Chỉ bật `purge` sau khi đã duyệt lần xóa. CLI xóa vĩnh viễn các phiên hết hạn và analysis thuộc phiên đó trong một transaction, giữ dữ liệu còn hạn. Khi lịch hoạt động, bước xóa tự chạy mỗi ngày; quyền đọc hết sau 24h, còn dữ liệu có thể chờ thêm gần 24h đến lần cleanup kế tiếp (hoặc lâu hơn nếu job trễ/thất bại).
+
+Để nghiệm thu vận hành, ghi run URL, commit và số dòng xóa; kiểm tra dữ liệu thử đã hết hạn bị xóa và dữ liệu còn hạn vẫn tồn tại. Kiểm thử local/CI không thay thế bằng chứng lịch chạy thật. Muốn dừng lịch, vào Actions và **Disable workflow**. Cấu hình này chưa thiết lập cleanup cho DB production.

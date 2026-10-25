@@ -1,0 +1,80 @@
+name: Cleanup expired guest sessions (dev)
+
+on:
+  schedule:
+    # 02:17 Asia/Ho_Chi_Minh (UTC+7), once per day.
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+    inputs:
+      purge:
+        description: "Permanently delete expired sessions and their analyses in Supabase JobShield (dev/test)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-dev
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      UV_PYTHON_DOWNLOADS: "manual"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Verify dev database and count expired data
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          PGSSLMODE: require
+        run: |
+          uv run --no-dev python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          from sqlalchemy.engine import make_url
+
+          raw_url = os.environ["DATABASE_URL"]
+          if not raw_url:
+              raise SystemExit("Missing DEV_DATABASE_URL; refusing cleanup.")
+          url = make_url(raw_url)
+          if (
+              url.drivername != "postgresql+psycopg"
+              or url.host != "aws-0-ap-southeast-1.pooler.supabase.com"
+              or url.port != 5432
+              or url.database != "postgres"
+              or url.username != "postgres.vleyapvlgnukcawgxozg"
+              or set(url.query) - {"sslmode"}
+              or url.query.get("sslmode", "require") not in {"require", "verify-ca", "verify-full"}
+          ):
+              raise SystemExit("Database target is not the approved Supabase JobShield dev/test connection.")
+          engine = create_engine(url, connect_args={"connect_timeout": 10})
+          with engine.connect() as conn:
+              sessions = conn.scalar(text("SELECT count(*) FROM guest_sessions WHERE expires_at <= CURRENT_TIMESTAMP"))
+              analyses = conn.scalar(text("SELECT count(*) FROM analyses WHERE session_id IN (SELECT id FROM guest_sessions WHERE expires_at <= CURRENT_TIMESTAMP)"))
+          engine.dispose()
+          print(f"Verified dev project vleyapvlgnukcawgxozg: expired sessions={sessions}, analyses={analyses}")
+          PY
+
+      - name: Purge expired dev data
+        if: github.event_name == 'schedule' || inputs.purge
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          PGSSLMODE: require
+        run: uv run --no-dev python -m app.cli.cleanup
