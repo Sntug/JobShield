@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import Settings
 from app.api.router import api_router
+from app.api.verification_http import VerificationRequestGuard, verification_path, verification_error, verification_validation_error
 
 
 app = FastAPI(
@@ -26,6 +27,8 @@ app = FastAPI(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Sanitize lỗi 422: Không echo lại nội dung văn bản đầu vào để bảo vệ quyền riêng tư."""
+    if verification_path(request.url.path):
+        return verification_validation_error(request, exc)
     sanitized_errors = []
     for err in exc.errors():
         sanitized_errors.append({
@@ -54,6 +57,8 @@ allow_origins = [
     "https://job-shield-virid.vercel.app",
 ]
 
+app.add_middleware(VerificationRequestGuard)
+
 # CORS: Chỉ cho phép các origin hợp lệ, không dùng credentials cookie, giới hạn methods/headers
 app.add_middleware(
     CORSMiddleware,
@@ -72,12 +77,23 @@ COMMIT_SHA = os.getenv("RENDER_GIT_COMMIT", os.getenv("GIT_COMMIT", "dev"))[:7]
 async def trace_requests(request: Request, call_next):
     """Truy vết request: sinh ID mới, trả header X-Request-ID, no-store và log an toàn."""
     request_id = uuid.uuid4().hex
-    response = await call_next(request)
+    request.state.request_id = request_id
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        if not verification_path(request.url.path):
+            raise
+        code = "SOURCE_STORE_UNAVAILABLE" if isinstance(exc, SQLAlchemyError) else "INTERNAL_ERROR"
+        response = verification_error(request_id, 503 if isinstance(exc, SQLAlchemyError) else 500, code)
+        origin = request.headers.get("origin")
+        if origin in allow_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Commit-SHA"] = COMMIT_SHA
 
     # Mọi phản hồi thuộc endpoint analyses (kể cả lỗi 401, 404, 422) đều không được lưu cache
-    if request.url.path.startswith("/api/v1/analyses"):
+    if request.url.path.startswith("/api/v1/analyses") or verification_path(request.url.path):
         response.headers["Cache-Control"] = "no-store"
 
     logger.info(

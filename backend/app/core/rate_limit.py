@@ -29,12 +29,12 @@ def get_client_ip(request: Request) -> str:
     return "127.0.0.1"
 
 
-def check_rate_limit(request: Request) -> None:
+def check_rate_limit(request: Request, bucket: str = "analyses") -> None:
     """Kiểm tra giới hạn tần suất request (10 requests / 60 giây / IP).
 
     Thread-safe, dùng monotonic clock và cap cứng LRU tối đa MAX_TRACKED_IPS.
     """
-    ip = get_client_ip(request)
+    ip = f"{bucket}:{get_client_ip(request)}"
     now = time.monotonic()
     window_start = now - WINDOW_SECONDS
 

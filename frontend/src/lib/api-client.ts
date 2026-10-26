@@ -1,4 +1,4 @@
-import { AnalysisResponse } from "@/types/api";
+import { AnalysisResponse, VerificationCreate, VerificationResponse } from "@/types/api";
 
 const GUEST_TOKEN_KEY = "jobshield_guest_token";
 
@@ -105,4 +105,34 @@ export async function getAnalysis(id: string): Promise<AnalysisResponse> {
   }
 
   return response.json();
+}
+
+
+export async function createVerification(payload: VerificationCreate, signal?: AbortSignal): Promise<VerificationResponse> {
+  let response: Response;
+  try {
+    const timeout = AbortSignal.timeout(30_000);
+    response = await fetch(`${getApiBaseUrl()}/api/v1/verifications`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload), credentials: "omit", cache: "no-store",
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new Error("Không thể kết nối kho nguồn hoặc yêu cầu đã hết thời gian. Vui lòng thử lại.");
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    let message = data?.detail?.message_vi || "Không thể hoàn tất xác minh. Vui lòng thử lại.";
+    if (response.status === 429) {
+      const seconds = Number.parseInt(response.headers.get("Retry-After") || "60", 10) || 60;
+      message += ` Thử lại sau ${seconds} giây.`;
+    }
+    const labels: Record<string, string> = { company_name: "Tên công ty", tax_id: "Mã số thuế", contact_email: "Email", recruitment_website: "Website", social_channel_url: "Kênh mạng xã hội", bank_account: "Thông tin ngân hàng" };
+    const invalidFields = Array.isArray(data?.detail?.errors) ? [...new Set<string>(data.detail.errors.map((error: { field?: string }) => labels[(error.field || "").split(".")[0]]).filter(Boolean))] : [];
+    if (invalidFields.length) message += ` Kiểm tra: ${invalidFields.join(", ")}.`;
+    throw new Error(message);
+  }
+  if (!data || !Array.isArray(data.field_checks) || !Array.isArray(data.matched_sources)) throw new Error("Phản hồi xác minh không hợp lệ. Vui lòng thử lại.");
+  return data;
 }

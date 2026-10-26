@@ -1,0 +1,38 @@
+{
+  "employers": [
+    {
+      "id": "15b69a19-55b3-5d66-921c-60afd9f3cec7",
+      "legal_name": "FPT Software Company Limited",
+      "tax_id": null,
+      "sources": [
+        {
+          "id": "d7e0f649-abec-5c2c-832c-6b38eb7be507",
+          "url": "https://fptsoftware.com/contact-us",
+          "label_vi": "FPT Software — trang liên hệ chính chủ",
+          "evidence_excerpt_vi": "FPT Software Company Limited công bố email Human Resources Recruitment@fpt.com và liên kết tuyển dụng career.fpt-software.com.",
+          "reviewed_by": "codex:public-primary-source-check-2026-10-26",
+          "source_revision": 1,
+          "verified_at": "2026-10-26T03:52:17.170279+00:00",
+          "claims": [
+            {
+              "field": "company_name",
+              "value": "FPT Software Company Limited"
+            },
+            {
+              "field": "company_name",
+              "value": "FPT Software"
+            },
+            {
+              "field": "contact_email",
+              "value": "Recruitment@fpt.com"
+            },
+            {
+              "field": "recruitment_website",
+              "value": "https://career.fpt-software.com/"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

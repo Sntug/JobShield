@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnalysisResponse } from "@/types/api";
 import {
   clearGuestToken,
@@ -22,7 +23,10 @@ export default function AnalyzePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    let active = true;
+    let revision = 0;
     const syncWithUrl = async () => {
+      const current = ++revision;
       const params = new URLSearchParams(window.location.search);
       const id = params.get("id");
       const token = getGuestToken();
@@ -30,6 +34,7 @@ export default function AnalyzePage() {
       if (id) {
         if (!token) {
           setAnalysis(null);
+          setIsLoadingDetail(false);
           setError("Không có phiên khách để đọc kết quả phân tích. Vui lòng dán và phân tích tin mới.");
           return;
         }
@@ -37,8 +42,10 @@ export default function AnalyzePage() {
         setError(null);
         try {
           const data = await getAnalysis(id);
+          if (!active || current !== revision) return;
           setAnalysis(data);
         } catch (err: unknown) {
+          if (!active || current !== revision) return;
           const e = err as { message?: string; code?: string };
           setAnalysis(null);
           setError("Không thể tải lại kết quả trước đó. Bạn có thể dán và phân tích lại.");
@@ -46,10 +53,11 @@ export default function AnalyzePage() {
             setIsSessionInvalid(true);
           }
         } finally {
-          setIsLoadingDetail(false);
+          if (active && current === revision) setIsLoadingDetail(false);
         }
       } else {
-        // Người dùng ấn Back về /analyze không có id -> trả về form nhập liệu
+        // Ignore detail responses that belong to the previous URL.
+        setIsLoadingDetail(false);
         setAnalysis(null);
         setError(null);
         setIsSessionInvalid(false);
@@ -59,6 +67,8 @@ export default function AnalyzePage() {
     syncWithUrl();
     window.addEventListener("popstate", syncWithUrl);
     return () => {
+      active = false;
+      revision += 1;
       window.removeEventListener("popstate", syncWithUrl);
     };
   }, []);
@@ -109,6 +119,10 @@ export default function AnalyzePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <nav aria-label="Điều hướng" className="mb-6 flex flex-wrap gap-5 text-sm">
+        <Link href="/" className="text-blue-700 underline dark:text-blue-300">Trang chủ</Link>
+        <Link href="/verify-employer" className="text-blue-700 underline dark:text-blue-300">Xác minh nhà tuyển dụng</Link>
+      </nav>
       <div className="mb-8 text-center sm:text-left">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
           Phân tích tin tuyển dụng

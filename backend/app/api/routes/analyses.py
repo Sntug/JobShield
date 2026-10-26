@@ -13,6 +13,8 @@ from app.models.analyses import Analysis
 from app.models.guest_sessions import GuestSession
 from app.schemas.analyses import AnalysisCreate, AnalysisResponse, JobExtracted, IndicatorItem, EvidenceData
 from app.services.analysis import perform_text_analysis
+from app.services.extraction import extract_job_fields
+from app.services.verification_store import load_for_job
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
 
@@ -71,7 +73,7 @@ def create_analysis(
 
     # Thực hiện phân tích văn bản thuần
     job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi = (
-        perform_text_analysis(payload.text, is_demo=False)
+        perform_text_analysis(payload.text, employer_records=load_for_job(db, extract_job_fields(payload.text)), is_demo=False)
     )
 
     # Lưu snapshot bất biến vào cơ sở dữ liệu
@@ -86,7 +88,7 @@ def create_analysis(
         indicators=[ind.model_dump() for ind in indicators],
         evidence=evidence.model_dump(),
         actions_vi=actions_vi,
-        engine_version="0.1.0",
+        engine_version="1.2.0",
         rules_version="2026.10",
         created_at=now,
         expires_at=session.expires_at,

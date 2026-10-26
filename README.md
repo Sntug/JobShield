@@ -1,4 +1,36 @@
-# JobShield — cấu trúc dự án
+# JobShield
+
+## Trạng thái triển khai local — 26/10/2026
+
+- `/analyze`: phân tích văn bản, lưu/đọc snapshot theo phiên khách; cảnh báo rủi ro độc lập với kết quả đối chiếu nguồn.
+- `/verify-employer`: tra cứu công khai sáu nhóm thông tin, hiển thị căn cứ theo trường, dữ kiện thiếu và khuyến nghị; không lưu payload tra cứu/ngân hàng.
+- `POST /api/v1/verifications`: validation, giới hạn body/tần suất, lỗi lược dữ liệu riêng và nguồn có provenance/revision. Kho nguồn gồm ba bảng với composite FK chống gắn sai chủ thể.
+- Bộ nguồn khởi đầu thật và hướng dẫn quản trị ở [backend/data/README.md](backend/data/README.md). Fixture E2E nằm riêng trong `backend/tests/fixtures/`, không tự nạp khi app khởi động.
+- R1.2/R1.3 đã có implementation và bằng chứng local; deployment/UAT người dùng là bước nghiệm thu riêng, chưa được suy ra từ test tự động. Các trang tài khoản/quản trị/ảnh/URL vẫn thuộc mốc sau.
+
+Backend (từ `backend/`, `DATABASE_URL` được cấu hình riêng cho đúng DB đích):
+
+```sh
+uv sync --frozen
+uv run alembic upgrade head
+uv run python -m app.cli.import_sources data/verified_sources.json
+# Lệnh trên chỉ validate. Sau khi review đúng DB đích và dữ liệu:
+uv run python -m app.cli.import_sources data/verified_sources.json --apply
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Frontend (từ `frontend/`, `NEXT_PUBLIC_API_BASE_URL` trỏ backend tương ứng):
+
+```sh
+npm ci --include=optional
+npm run dev
+```
+
+Không chạy migration hoặc import vào production chỉ vì các lệnh đã được ghi ở đây. Bản migration mới chỉ thêm ba bảng nguồn; bài downgrade xóa các bảng nguồn nên chỉ diễn tập trên DB/schema thử riêng.
+
+## Lịch sử khởi tạo — 15/10/2026
+
+Phần bên dưới là baseline lịch sử, không mô tả trạng thái code hiện tại.
 
 Đọc [kế hoạch bàn giao theo tính năng](docs/superpowers/plans/2026-10-15-jobshield-delivery-plan.md), bắt đầu tại phiếu R0.1. Quy trình mới đưa Docker/CI/staging lên sớm, làm luồng phân tích văn bản cho khách trước tài khoản; mỗi phiếu có mục tiêu, tiêu chí nghiệm thu, bằng chứng và phần tự học. Đây là thay đổi kế hoạch, chưa triển khai hạ tầng hoặc chức năng.
 

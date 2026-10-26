@@ -43,6 +43,25 @@ const mockAnalysis: AnalysisResponse = {
 };
 
 describe("AnalysisResults", () => {
+  it("explains that no indicators do not establish safety", () => {
+    render(<AnalysisResults analysis={{ ...mockAnalysis, indicators: [], risk_label_vi: "Không đủ thông tin" }} onReset={vi.fn()} />);
+    expect(screen.getByText(/Chưa phát hiện dấu hiệu cảnh báo trong văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/không chứng minh tin tuyển dụng an toàn/i)).toBeInTheDocument();
+  });
+
+  it("labels demo sources independently of the overall analysis", () => {
+    render(<AnalysisResults analysis={{ ...mockAnalysis, evidence: {
+      ...mockAnalysis.evidence, is_demo: false,
+      matched_sources: [{ id: "demo-source", label_vi: "Nguồn mẫu", is_demo: true }],
+    } }} onReset={vi.fn()} />);
+    expect(screen.getByText(/Nguồn DEMO/i)).toBeInTheDocument();
+  });
+
+  it("makes missing extracted fields explicit", () => {
+    render(<AnalysisResults analysis={mockAnalysis} onReset={vi.fn()} />);
+    expect(screen.getAllByText("Chưa có thông tin").length).toBeGreaterThan(0);
+  });
+
   it("renders risk badges, finding, indicators with verbatim quote, and 11 fields", () => {
     const handleReset = vi.fn();
     render(<AnalysisResults analysis={mockAnalysis} onReset={handleReset} />);

@@ -8,6 +8,7 @@ import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 from app.schemas.analyses import EvidenceData, IndicatorItem, JobExtracted
+from app.services.employer_verification import verify_employer
 
 
 def to_ascii_slug(s: str) -> str:
@@ -36,7 +37,7 @@ def is_negated(clause: str) -> bool:
 
 
 def detect_indicators(
-    text: str, employer_records: Optional[List[Dict[str, Any]]] = None
+    text: str, employer_records: Optional[List[Dict[str, Any]]] = None, is_demo: bool = False
 ) -> List[IndicatorItem]:
     """Phát hiện các dấu hiệu rủi ro: phân biệt danh sách danh từ với mệnh đề có động từ mới."""
     indicators: List[IndicatorItem] = []
@@ -90,16 +91,11 @@ def detect_indicators(
         if m_imp and not re.search(r"\b(?:tránh|đừng|cảnh báo không|tuyệt đối không)\b", s[:m_imp.start()], re.IGNORECASE):
             claimed_company = m_imp.group(1).strip()
             email = m_imp.group(2).strip().rstrip(".,;")
-            domain = email.split("@")[-1].lower() if "@" in email else ""
-
-            is_impersonation = False
-            if employer_records:
-                for emp in employer_records:
-                    if emp.get("name") and emp["name"].strip().lower() == claimed_company.lower():
-                        official_domains = [d.lower() for d in emp.get("official_domains", [])]
-                        if official_domains and domain not in official_domains:
-                            is_impersonation = True
-                            break
+            verification, _ = verify_employer(
+                JobExtracted(company_name=claimed_company, contact_email=email),
+                employer_records or [], is_demo,
+            )
+            is_impersonation = verification == "Thông tin xung đột"
 
             if is_impersonation:
                 indicators.append(
@@ -195,25 +191,6 @@ def detect_indicators(
     return indicators
 
 
-from urllib.parse import urlparse
-
-
-def extract_domain(val: Optional[str]) -> Optional[str]:
-    """Trích xuất hostname/domain từ email hoặc URL."""
-    if not val:
-        return None
-    val = val.strip().lower()
-    if "@" in val:
-        return val.split("@")[-1].strip()
-    if "://" not in val:
-        val = f"https://{val}"
-    try:
-        parsed = urlparse(val)
-        return parsed.hostname.lower() if parsed.hostname else None
-    except Exception:
-        return None
-
-
 def evaluate_analysis(
     text: str,
     job: JobExtracted,
@@ -230,6 +207,7 @@ def evaluate_analysis(
         missing_items.append("Vị trí tuyển dụng")
     if not job.salary:
         missing_items.append("Mức lương")
+    missing_job_fields = missing_items.copy()
     has_contact = bool(job.contact_email or job.recruitment_website or job.contact_phone)
     if not has_contact:
         missing_items.append("Email/domain hoặc kênh tuyển dụng đối chiếu được")
@@ -262,8 +240,6 @@ def evaluate_analysis(
         ]
 
         # Kiểm tra kênh đối chiếu của tin
-        email_domain = extract_domain(job.contact_email)
-        web_domain = extract_domain(job.recruitment_website)
         has_verifiable_channel = bool(job.contact_email or job.recruitment_website)
 
         # Trường hợp: không có email và không có website để đối chiếu kênh
@@ -308,39 +284,9 @@ def evaluate_analysis(
                 actions_vi = ["Xác nhận vị trí với kênh tuyển dụng độc lập trước khi gửi hồ sơ."]
 
         elif matching_employers:
-            # Có kênh liên hệ và có bản ghi trùng tên -> Đánh giá chi tiết từng bản ghi
-            matched_emp: Optional[Dict[str, Any]] = None
-            conflicted_emp: Optional[Dict[str, Any]] = None
-
-            for emp in matching_employers:
-                official_domains = [d.lower() for d in emp.get("official_domains", [])]
-                official_contacts = [c.lower() for c in emp.get("official_contacts", [])]
-                official_pages = [p.lower().rstrip("/") for p in emp.get("official_recruitment_pages", [])]
-
-                # So sánh email
-                email_match = False
-                email_conflict = False
-                if job.contact_email:
-                    if job.contact_email.lower() in official_contacts or (email_domain and email_domain in official_domains):
-                        email_match = True
-                    elif official_domains or official_contacts:
-                        email_conflict = True
-
-                # So sánh website
-                web_match = False
-                web_conflict = False
-                if job.recruitment_website:
-                    clean_web = job.recruitment_website.lower().rstrip("/")
-                    if clean_web in official_pages or (web_domain and web_domain in official_domains):
-                        web_match = True
-                    elif official_domains or official_pages:
-                        web_conflict = True
-
-                if (email_match or web_match) and not email_conflict and not web_conflict:
-                    matched_emp = emp
-                    break
-                elif email_conflict or web_conflict:
-                    conflicted_emp = emp
+            verification_label_vi, candidates = verify_employer(job, matching_employers, is_demo)
+            matched_emp = candidates[0] if verification_label_vi == "Khớp nguồn đã xác minh" else None
+            conflicted_emp = candidates[0] if verification_label_vi == "Thông tin xung đột" else None
 
             demo_label = " DEMO A" if is_demo else ""
 
@@ -368,7 +314,7 @@ def evaluate_analysis(
                     ]
                 else:
                     finding_vi = (
-                        f"Email và trang tuyển dụng khớp nguồn{demo_label}. "
+                        f"Kênh liên hệ được cung cấp khớp nguồn{demo_label}. "
                         "Chưa có dấu hiệu kích hoạt trong nội dung; khớp nguồn không bảo đảm tin thật."
                     )
                     actions_vi = [
@@ -379,16 +325,18 @@ def evaluate_analysis(
             elif conflicted_emp:
                 # XUNG ĐỘT KÊNH VỚI NGUỒN CHÍNH THỨC
                 verification_label_vi = "Thông tin xung đột"
-                for s in conflicted_emp.get("sources", []):
-                    matched_sources.append({
-                        "id": s.get("id"),
-                        "url": s.get("url"),
-                        "label_vi": s.get("label_vi"),
-                        "verified_at": s.get("verified_at"),
-                        "is_demo": s.get("is_demo", is_demo),
-                    })
+                matched_sources = [
+                    {
+                        "id": source.get("id"),
+                        "url": source.get("url"),
+                        "label_vi": source.get("label_vi"),
+                        "verified_at": source.get("verified_at"),
+                        "is_demo": source.get("is_demo", is_demo),
+                    }
+                    for emp in candidates for source in emp.get("sources", [])
+                ]
                 missing_items = []
-                finding_vi = f"Email trong tin khác email/domain của nguồn{demo_label}; có chỉ dấu mạo danh, chưa kết luận gian lận."
+                finding_vi = f"Email hoặc website trong tin khác kênh của nguồn{demo_label}; cần xác minh lại, chưa kết luận gian lận."
                 actions_vi = [
                     "Đối chiếu với tuyendung@mau-a.example trong bài DEMO." if is_demo else "Đối chiếu email với website tuyển dụng chính thức của công ty.",
                     "Xác nhận người tuyển dụng qua nguồn độc lập trước khi gửi hồ sơ.",
@@ -397,7 +345,11 @@ def evaluate_analysis(
             else:
                 # Không đủ căn cứ để kết luận khớp hay xung đột (ví dụ sources rỗng hoặc chưa khớp)
                 verification_label_vi = "Chưa xác minh"
-                finding_vi = "Tên doanh nghiệp có trong danh sách nhưng kênh liên hệ chưa đủ căn cứ xác minh độc lập."
+                matched_sources = [
+                    {key: source.get(key) for key in ("id", "url", "label_vi", "verified_at", "is_demo")}
+                    for emp in candidates for source in emp.get("sources", [])
+                ]
+                finding_vi = "Tên doanh nghiệp có trong danh sách nhưng kênh liên hệ chưa đủ căn cứ chọn duy nhất một nguồn xác minh độc lập."
                 actions_vi = ["Xác nhận vị trí với kênh tuyển dụng độc lập trước khi gửi hồ sơ."]
 
         else:
@@ -455,6 +407,12 @@ def evaluate_analysis(
             "Kết quả phân tích tự động dựa trên quy tắc văn bản tại thời điểm đánh giá; "
             "không thay thế xác minh pháp lý hoặc điều tra thực tế."
         ]
+
+    missing_items = list(dict.fromkeys(missing_job_fields + missing_items))
+    if not has_contact and not any(
+        "liên hệ" in item.lower() or "email/domain" in item.lower() for item in missing_items
+    ):
+        missing_items.append("Email/domain hoặc kênh tuyển dụng đối chiếu được")
 
     evidence = EvidenceData(
         matched_sources=matched_sources,
