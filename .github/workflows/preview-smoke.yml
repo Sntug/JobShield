@@ -13,48 +13,68 @@ concurrency:
 
 jobs:
   installed-checker:
-    name: ${{ github.event.deployment.creator.login == 'vercel[bot]' && 'Vercel Preview / installed-checker' || 'Other deployment / installed-checker' }}
-    if: >-
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment.creator.login == 'vercel[bot]' &&
-      startsWith(github.event.deployment.environment, 'Preview')
+    name: Deployment event routing
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
-      available: ${{ steps.checker.outputs.available }}
+      relevant: ${{ steps.route.outputs.relevant }}
       revision: ${{ steps.checker.outputs.revision }}
     steps:
-      # This event is privileged: execute only the trusted default-branch checker.
+      - id: route
+        name: Identify a successful Vercel Preview
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          deployment = event.get('deployment') or {}
+          status = event.get('deployment_status') or {}
+          environment = deployment.get('environment', '').lower()
+          relevant = (
+              (deployment.get('creator') or {}).get('login') == 'vercel[bot]'
+              and status.get('state') == 'success'
+              and (environment == 'preview' or environment.startswith('preview '))
+          )
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('relevant=' + str(relevant).lower() + '\n')
+          PY
+      # Never run the PR's checker with secrets. The first rollout uses an audited immutable commit.
       - uses: actions/checkout@v4
+        if: steps.route.outputs.relevant == 'true'
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
       - id: checker
-        name: Check that the trusted gate is installed
+        if: steps.route.outputs.relevant == 'true'
+        name: Select a trusted checker revision
         run: |
           if [ -f scripts/check-preview.py ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
             echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Preview smoke is skipped until this gate is merged into the default branch. It has not passed."
+            echo "revision=0f6e4676b21b5b367d0e8daeab38beaab14c8a4f" >> "$GITHUB_OUTPUT"
+            echo "::notice::Using the reviewed bootstrap checker until installation on the default branch."
           fi
 
   preview-smoke:
-    name: ${{ github.event.deployment.creator.login == 'vercel[bot]' && 'Vercel Preview / smoke' || 'Other deployment / smoke' }}
+    name: ${{ needs.installed-checker.outputs.relevant == 'true' && 'Vercel Preview smoke' || 'Ignored deployment event' }}
     needs: installed-checker
-    if: needs.installed-checker.outputs.available == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - name: Explain unrelated deployment events
+        if: needs.installed-checker.outputs.relevant != 'true'
+        run: echo "This is not a successful Vercel Preview event. No smoke result is produced."
       - uses: actions/checkout@v4
+        if: needs.installed-checker.outputs.relevant == 'true'
         with:
           ref: ${{ needs.installed-checker.outputs.revision }}
           persist-credentials: false
       - uses: actions/setup-python@v5
+        if: needs.installed-checker.outputs.relevant == 'true'
         with:
           python-version: '3.13'
       - name: Verify actual frontend to backend to database flow
+        if: needs.installed-checker.outputs.relevant == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

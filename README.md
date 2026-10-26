@@ -405,9 +405,11 @@ các cột model dùng được; thiếu schema trả 503. Render DEV nên đặ
 SHA, schema current, nguồn FPT/provenance và tạo/đọc analysis bằng guest token.
 Nó chạy script tin cậy từ default branch, không chạy code PR với token GitHub;
 không cần Render/Vercel API token mới. Workflow cần có trên default branch để hoạt
-động đầy đủ; ở PR cài đặt lần đầu, job smoke được **skip** (không coi là pass)
-cho tới khi checker được merge vào default branch. Lượt push đầu tiên vẫn cần
-nghiệm thu cloud sau deploy.
+động theo bản mới nhất; ở PR cài đặt lần đầu, workflow dùng commit checker đã
+review được pin SHA bất biến thay vì skip hoặc chạy script từ PR chưa được tin cậy.
+Sau khi cài trên default branch, workflow tự dùng checker của default branch.
+Các deployment Render/Production chỉ chạy bước định tuyến và hiện “Ignored
+deployment event”, không tạo hoặc che kết quả “Vercel Preview smoke”.
 
 Test local qua proxy (backend riêng phải chạy và DB test đã migrate/nạp fixture):
 
