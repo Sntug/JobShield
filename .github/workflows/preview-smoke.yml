@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   installed-checker:
+    name: ${{ github.event.deployment.creator.login == 'vercel[bot]' && 'Vercel Preview / installed-checker' || 'Other deployment / installed-checker' }}
     if: >-
       github.event.deployment_status.state == 'success' &&
       github.event.deployment.creator.login == 'vercel[bot]' &&
@@ -40,6 +41,7 @@ jobs:
           fi
 
   preview-smoke:
+    name: ${{ github.event.deployment.creator.login == 'vercel[bot]' && 'Vercel Preview / smoke' || 'Other deployment / smoke' }}
     needs: installed-checker
     if: needs.installed-checker.outputs.available == 'true'
     runs-on: ubuntu-latest
@@ -55,4 +57,5 @@ jobs:
       - name: Verify actual frontend to backend to database flow
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: python scripts/check-preview.py --deployment-event "$GITHUB_EVENT_PATH"

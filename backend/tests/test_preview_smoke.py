@@ -68,3 +68,43 @@ def test_deployment_event_only_accepts_current_same_repo_pr(tmp_path, monkeypatc
     monkeypatch.setattr(smoke, 'request_json', lambda *args, **kwargs: (200, [{'state': 'open', 'head': {'sha': sha, 'repo': {'full_name': 'attacker/fork'}}}], {}))
     with pytest.raises(ValueError):
         smoke.deployment_event(path)
+
+
+@pytest.mark.parametrize('base,expected', [
+    ('https://job-shield-x-sntug.vercel.app', 'fixture-bypass-token'),
+    ('https://api.github.com', None),
+    ('https://attacker.example', None),
+    ('http://127.0.0.1:3001', None),
+])
+def test_bypass_secret_is_only_sent_to_approved_https_preview(monkeypatch, base, expected):
+    from io import BytesIO
+    from types import SimpleNamespace
+    captured = []
+    def open_request(request, timeout):
+        captured.append(dict((key.lower(), value) for key, value in request.header_items()))
+        response = BytesIO(b'{}')
+        response.status = 200
+        response.headers = {}
+        return response
+    monkeypatch.setenv('VERCEL_AUTOMATION_BYPASS_SECRET', 'fixture-bypass-token')
+    monkeypatch.setattr(smoke, 'build_opener', lambda *args: SimpleNamespace(open=open_request))
+    smoke.request_json(base, '/ready')
+    assert captured[0].get('x-vercel-protection-bypass') == expected
+
+
+def test_missing_automation_access_fails_without_waiting_300_seconds(monkeypatch):
+    import sys
+    monkeypatch.setattr(sys, 'argv', ['check-preview.py', '--url', 'https://job-shield-x-sntug.vercel.app', '--sha', 'a' * 40])
+    def denied(*args):
+        raise smoke.PreviewAuthenticationRequired('Configure VERCEL_AUTOMATION_BYPASS_SECRET for protected Preview access.')
+    monkeypatch.setattr(smoke, 'ready', denied)
+    monkeypatch.setattr(smoke.time, 'sleep', lambda *args: pytest.fail('Authentication errors must not be retried'))
+    with pytest.raises(SystemExit, match='VERCEL_AUTOMATION_BYPASS_SECRET'):
+        smoke.main()
+
+
+def test_invalid_secret_is_not_echoed_in_errors(monkeypatch):
+    monkeypatch.setenv('VERCEL_AUTOMATION_BYPASS_SECRET', 'fixture-secret-with-newline' + chr(10))
+    with pytest.raises(ValueError) as error:
+        smoke.request_json('https://job-shield-x-sntug.vercel.app', '/ready')
+    assert 'fixture-secret-with-newline' not in str(error.value)

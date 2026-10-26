@@ -421,3 +421,11 @@ Chỉ dọn schema DEV cụ thể sau khi không còn cần dữ liệu thử. R
 cold start; smoke chờ tối đa 300 giây rồi báo lỗi thay vì báo xanh giả. Nếu bật
 Vercel Deployment Protection, smoke từ Actions cần cơ chế truy cập được phê duyệt;
 không tắt protection chỉ để làm test xanh.
+
+Với Preview đang bật Vercel Authentication: tại Deployment Protection → Protection
+Bypass for Automation → Add Secret, người quản trị tự tạo/copy secret. Lưu cùng giá
+trị trong GitHub repository → Settings → Secrets and variables → Actions → New
+repository secret, tên `VERCEL_AUTOMATION_BYPASS_SECRET`. Không dán secret vào chat,
+source, URL hoặc `NEXT_PUBLIC_*`. Redeploy Preview sau khi tạo/đổi secret. Checker
+chỉ gửi header `x-vercel-protection-bypass` tới host HTTPS Preview được phép,
+không gửi tới GitHub API hoặc theo redirect; 401 báo lỗi ngay để sửa quyền truy cập.

@@ -1,4 +1,4 @@
-"""Credential-free functional smoke through the frontend's same-origin API proxy."""
+"""Functional smoke through the frontend's same-origin API proxy."""
 
 import argparse
 import json
@@ -16,6 +16,10 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
+class PreviewAuthenticationRequired(ValueError):
+    pass
+
+
 def validate_url(value, *, allow_local=False):
     parts = urlsplit(value)
     if parts.username or parts.password or parts.query or parts.fragment or parts.path not in ('', '/'):
@@ -28,16 +32,30 @@ def validate_url(value, *, allow_local=False):
 
 
 def request_json(base, path, method='GET', payload=None, headers=None, timeout=30):
+    try:
+        validate_url(base)
+        is_preview = True
+    except ValueError:
+        is_preview = False
+    protection_headers = {}
+    secret = os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '')
+    if is_preview and secret:
+        if len(secret) > 4096 or any(ord(character) < 33 or ord(character) > 126 for character in secret):
+            raise ValueError('Invalid VERCEL_AUTOMATION_BYPASS_SECRET format.')
+        # Never attach this project credential to GitHub API, loopback or external URLs.
+        protection_headers['x-vercel-protection-bypass'] = secret
     data = None if payload is None else json.dumps(payload).encode()
     req = Request(base + path, data=data, method=method, headers={
         'Accept': 'application/json', 'Content-Type': 'application/json',
-        'User-Agent': 'JobShield-Preview-Smoke', **(headers or {}),
+        'User-Agent': 'JobShield-Preview-Smoke', **(headers or {}), **protection_headers,
     })
     try:
         response = build_opener(NoRedirect).open(req, timeout=timeout)
     except HTTPError as error:
         response = error
     with response:
+        if is_preview and response.status == 401 and not response.headers.get('X-Commit-SHA'):
+            raise PreviewAuthenticationRequired('Preview access denied. Configure VERCEL_AUTOMATION_BYPASS_SECRET in GitHub Actions and redeploy after creating or rotating it.')
         body = response.read(1024 * 1024 + 1)
         if len(body) > 1024 * 1024:
             raise ValueError('Oversized Preview response.')
@@ -126,6 +144,8 @@ def main():
             try:
                 ready(base, sha)
                 break
+            except PreviewAuthenticationRequired:
+                raise
             except (ValueError, URLError, TimeoutError):
                 if time.monotonic() >= deadline:
                     raise ValueError('Preview not ready after 300 seconds; check backend deploy, PR metadata and schema.') from None
