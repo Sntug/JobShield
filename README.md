@@ -409,7 +409,15 @@ không cần Render/Vercel API token mới. Workflow cần có trên default bra
 review được pin SHA bất biến thay vì skip hoặc chạy script từ PR chưa được tin cậy.
 Sau khi cài trên default branch, workflow tự dùng checker của default branch.
 Các deployment Render/Production chỉ chạy bước định tuyến và hiện “Ignored
-deployment event”, không tạo hoặc che kết quả “Vercel Preview smoke”.
+deployment event”. Bảng Actions trên PR có thể chỉ hiện lượt deployment mới nhất,
+nên đổi tên job không đủ để giữ kết quả Vercel. Kết quả chức năng được ghi riêng
+vào commit status **`JobShield / Preview smoke`**: pending trước kiểm tra, success
+chỉ khi toàn bộ smoke qua, failure khi smoke lỗi. Chỉ event Vercel Preview đã
+xác minh thuộc HEAD của PR cùng repo được ghi status; Render không cập nhật nó.
+Job smoke có quyền `statuses: write` để ghi kết quả này. Nếu job bị hủy giữa chừng,
+status giữ pending; mở link Details để xem lượt chạy thực tế.
+Các lượt Vercel cùng SHA được xếp hàng; deployment ID đã ghi trong status ngăn
+rerun deployment cũ ghi đè kết quả của deployment mới hơn.
 
 Test local qua proxy (backend riêng phải chạy và DB test đã migrate/nạp fixture):
 

@@ -7,10 +7,6 @@ permissions:
   contents: read
   pull-requests: read
 
-concurrency:
-  group: preview-smoke-${{ github.event.deployment.id }}
-  cancel-in-progress: true
-
 jobs:
   installed-checker:
     name: Deployment event routing
@@ -58,6 +54,15 @@ jobs:
   preview-smoke:
     name: ${{ needs.installed-checker.outputs.relevant == 'true' && 'Vercel Preview smoke' || 'Ignored deployment event' }}
     needs: installed-checker
+    # Serialize status writers for a commit; Render events use their own deployment group.
+    concurrency:
+      group: preview-smoke-${{ needs.installed-checker.outputs.relevant == 'true' && github.event.deployment.sha || github.event.deployment.id }}
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,8 +79,60 @@ jobs:
         with:
           python-version: '3.13'
       - name: Verify actual frontend to backend to database flow
-        if: needs.installed-checker.outputs.relevant == 'true'
         env:
+          PREVIEW_RELEVANT: ${{ needs.installed-checker.outputs.relevant }}
+          PREVIEW_DEPLOYMENT_ID: ${{ github.event.deployment.id }}
           GITHUB_TOKEN: ${{ github.token }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: python scripts/check-preview.py --deployment-event "$GITHUB_EVENT_PATH"
+        run: |
+          python3 - <<'PY'
+          import os, re, runpy, sys
+          if os.environ['PREVIEW_RELEVANT'] != 'true':
+              sys.exit(0)
+          checker = runpy.run_path('scripts/check-preview.py')
+          base, sha = checker['deployment_event'](os.environ['GITHUB_EVENT_PATH'])
+          repository = os.environ['GITHUB_REPOSITORY']
+          deployment_id = int(os.environ['PREVIEW_DEPLOYMENT_ID'])
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{repository}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+
+          def publish(state):
+              # Actions job results from later Render events can hide a failed Vercel run.
+              try:
+                  headers = {'Authorization': 'Bearer ' + os.environ['GITHUB_TOKEN']}
+                  code, combined, _ = checker['request_json']('https://api.github.com',
+                      f'/repos/{repository}/commits/{sha}/status?per_page=100', headers=headers)
+                  if code != 200 or not isinstance(combined.get('statuses'), list):
+                      raise ValueError('Cannot read current commit statuses')
+                  previous = next((item for item in combined['statuses']
+                      if item.get('context') == 'JobShield / Preview smoke'), None)
+                  if previous:
+                      match = re.fullmatch(r'Preview deployment ([0-9]+): (pending|success|failure)', previous.get('description') or '')
+                      if not match:
+                          raise ValueError('Unrecognized Preview status')
+                      if int(match[1]) > deployment_id:
+                          print('::notice::A newer deployment owns the Preview smoke status.')
+                          return False
+                  elif len(combined['statuses']) >= 100:
+                      raise ValueError('Cannot determine latest Preview status from one page')
+                  status, _, _ = checker['request_json']('https://api.github.com',
+                      f'/repos/{repository}/statuses/{sha}', 'POST', {
+                          'state': state, 'context': 'JobShield / Preview smoke',
+                          'target_url': run_url, 'description': f'Preview deployment {deployment_id}: {state}',
+                      }, headers=headers)
+                  if status != 201:
+                      raise ValueError('Commit status rejected')
+                  return True
+              except Exception:
+                  raise SystemExit('Cannot publish Preview smoke commit status.') from None
+
+          if not publish('pending'):
+              sys.exit(0)
+          sys.argv = ['check-preview.py', '--url', base, '--sha', sha]
+          try:
+              checker['main']()
+          except (Exception, SystemExit):
+              publish('failure')
+              raise
+          else:
+              publish('success')
+          PY
