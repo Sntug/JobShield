@@ -68,7 +68,7 @@ jobs:
           cache-dependency-path: "frontend/package-lock.json"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Lint frontend
         run: npm run lint
@@ -99,7 +99,8 @@ jobs:
     env:
       UV_PYTHON_DOWNLOADS: "manual"
       DATABASE_URL: "postgresql+psycopg://postgres:postgres_ci_password@localhost:5432/jobshield_ci_e2e"
-      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000"
+      API_PROXY_TARGET: "http://127.0.0.1:8000"
+      GIT_COMMIT: ${{ github.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -127,7 +128,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Install Playwright Browsers
         working-directory: frontend
@@ -136,6 +137,10 @@ jobs:
       - name: Run Database Migrations
         working-directory: backend
         run: uv run alembic upgrade head
+
+      - name: Load isolated E2E verification sources
+        working-directory: backend
+        run: .venv/bin/python -m tests.seed_r12_e2e
 
       - name: Start Backend Service
         working-directory: backend

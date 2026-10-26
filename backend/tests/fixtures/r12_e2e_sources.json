@@ -1,0 +1,88 @@
+{
+  "employers": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "legal_name": "Công ty E2E A",
+      "tax_id": "0000000401",
+      "sources": [
+        {
+          "id": "10000000-0000-4000-8000-000000000001",
+          "url": "https://company-1.example/about",
+          "label_vi": "Nguồn tổng hợp dành riêng cho E2E",
+          "evidence_excerpt_vi": "Thông tin minh họa trong DB kiểm thử cô lập; không phải nguồn thực tế.",
+          "reviewed_by": "isolated-e2e-test",
+          "source_revision": 1,
+          "verified_at": "2026-10-01T00:00:00Z",
+          "claims": [
+            {
+              "field": "company_name",
+              "value": "Công ty E2E A"
+            },
+            {
+              "field": "tax_id",
+              "value": "0000000401"
+            },
+            {
+              "field": "contact_email",
+              "value": "shared@e2e.example"
+            },
+            {
+              "field": "recruitment_website",
+              "value": "https://company-1.example/jobs"
+            },
+            {
+              "field": "bank_account",
+              "value": {
+                "account_number": "000010001",
+                "bank_name": "Bank E2E",
+                "account_holder": "CHU THE E2E"
+              }
+            },
+            {
+              "field": "contact_email",
+              "value": "hr@company-1.example"
+            },
+            {
+              "field": "social_channel_url",
+              "value": "https://t.me/e2e_only_profile_12345"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "legal_name": "Công ty E2E B",
+      "tax_id": "0000000402",
+      "sources": [
+        {
+          "id": "10000000-0000-4000-8000-000000000002",
+          "url": "https://company-2.example/about",
+          "label_vi": "Nguồn tổng hợp dành riêng cho E2E",
+          "evidence_excerpt_vi": "Thông tin minh họa trong DB kiểm thử cô lập; không phải nguồn thực tế.",
+          "reviewed_by": "isolated-e2e-test",
+          "source_revision": 1,
+          "verified_at": "2026-10-01T00:00:00Z",
+          "claims": [
+            {
+              "field": "company_name",
+              "value": "Công ty E2E B"
+            },
+            {
+              "field": "tax_id",
+              "value": "0000000402"
+            },
+            {
+              "field": "contact_email",
+              "value": "shared@e2e.example"
+            },
+            {
+              "field": "recruitment_website",
+              "value": "https://company-2.example/jobs"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

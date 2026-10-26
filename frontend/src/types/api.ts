@@ -23,6 +23,8 @@ export interface IndicatorItem {
 }
 
 export interface MatchedSource {
+  source_revision?: number;
+  evidence_excerpt_vi?: string;
   id?: string;
   url?: string;
   label_vi?: string;
@@ -55,4 +57,36 @@ export interface AnalysisResponse {
 
 export interface AnalysisCreate {
   text: string;
+}
+
+export type VerificationField = "company_name" | "tax_id" | "contact_email" | "recruitment_website" | "social_channel_url" | "bank_account";
+
+export interface VerificationCreate {
+  company_name?: string;
+  tax_id?: string;
+  contact_email?: string;
+  recruitment_website?: string;
+  social_channel_url?: string;
+  bank_account?: { account_number: string; bank_name: string; account_holder: string };
+}
+
+export interface VerificationFieldCheck {
+  field: VerificationField;
+  status: "matched" | "conflicting" | "unverified";
+  reason_vi: string;
+  source_ids: string[];
+}
+
+export interface VerificationResponse {
+  request_id: string;
+  verification_label_vi: "Khớp nguồn đã xác minh" | "Thông tin xung đột" | "Chưa xác minh" | "Không đủ dữ liệu";
+  summary_vi: string;
+  findings_vi: string[];
+  field_checks: VerificationFieldCheck[];
+  matched_sources: Array<Required<Pick<MatchedSource, "id" | "url" | "label_vi" | "verified_at">> & { source_revision: number; evidence_excerpt_vi: string }>;
+  missing_fields_vi: string[];
+  limitations_vi: string[];
+  recommended_actions_vi: string[];
+  verification_version: string;
+  checked_at: string;
 }
