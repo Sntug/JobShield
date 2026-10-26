@@ -1,0 +1,58 @@
+name: Deployed Preview Smoke
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: preview-smoke-${{ github.event.deployment.id }}
+  cancel-in-progress: true
+
+jobs:
+  installed-checker:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.creator.login == 'vercel[bot]' &&
+      startsWith(github.event.deployment.environment, 'Preview')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      available: ${{ steps.checker.outputs.available }}
+      revision: ${{ steps.checker.outputs.revision }}
+    steps:
+      # This event is privileged: execute only the trusted default-branch checker.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - id: checker
+        name: Check that the trusted gate is installed
+        run: |
+          if [ -f scripts/check-preview.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Preview smoke is skipped until this gate is merged into the default branch. It has not passed."
+          fi
+
+  preview-smoke:
+    needs: installed-checker
+    if: needs.installed-checker.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.installed-checker.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify actual frontend to backend to database flow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/check-preview.py --deployment-event "$GITHUB_EVENT_PATH"

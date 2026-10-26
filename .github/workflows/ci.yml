@@ -99,7 +99,8 @@ jobs:
     env:
       UV_PYTHON_DOWNLOADS: "manual"
       DATABASE_URL: "postgresql+psycopg://postgres:postgres_ci_password@localhost:5432/jobshield_ci_e2e"
-      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000"
+      API_PROXY_TARGET: "http://127.0.0.1:8000"
+      GIT_COMMIT: ${{ github.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

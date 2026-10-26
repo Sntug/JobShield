@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import Settings
+from app.db.preview import preview_schema, validate_preview_database, scope_engine
 
 _engine = None
 _SessionLocal = None
@@ -14,11 +15,18 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = Settings()
-        _engine = create_engine(
-            settings.database_url.get_secret_value(),
+        schema = preview_schema()
+        url = settings.database_url.get_secret_value()
+        if schema:
+            url = validate_preview_database(url)
+        engine = create_engine(
+            url,
             pool_pre_ping=True,
             connect_args={"connect_timeout": 10},
         )
+        if schema:
+            scope_engine(engine, schema)
+        _engine = engine
     return _engine
 
 

@@ -93,7 +93,7 @@ async def trace_requests(request: Request, call_next):
     response.headers["X-Commit-SHA"] = COMMIT_SHA
 
     # Mọi phản hồi thuộc endpoint analyses (kể cả lỗi 401, 404, 422) đều không được lưu cache
-    if request.url.path.startswith("/api/v1/analyses") or verification_path(request.url.path):
+    if request.url.path == "/ready" or request.url.path.startswith("/api/v1/analyses") or verification_path(request.url.path):
         response.headers["Cache-Control"] = "no-store"
 
     logger.info(
@@ -126,7 +126,7 @@ def healthz() -> Dict[str, str]:
 
 @app.get("/ready")
 def readiness(response: Response) -> Dict[str, Any]:
-    """Readiness probe: Kiểm tra kết nối tới cơ sở dữ liệu PostgreSQL."""
+    """Readiness probe: kết nối, migration head và các cột model phải khả dụng."""
     try:
         settings = Settings()
     except Exception as exc:
@@ -137,31 +137,31 @@ def readiness(response: Response) -> Dict[str, Any]:
             "message": "DATABASE_URL chưa được cấu hình",
         }
 
-    from sqlalchemy import create_engine
+    from app.db.session import get_engine
+    from app.services.readiness import check_readiness
 
     try:
-        engine = create_engine(
-            settings.database_url.get_secret_value(),
-            pool_pre_ping=True,
-            connect_args={"connect_timeout": 10},
-        )
+        engine = get_engine()
         with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+            schema_status = check_readiness(conn)
         return {
             "status": "ready",
             "database": "connected",
+            **schema_status,
         }
     except SQLAlchemyError:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "not_ready",
-            "database": "disconnected",
-            "message": "Không thể kết nối cơ sở dữ liệu",
+            "database": "unavailable",
+            "schema": "unavailable",
+            "message": "Không thể truy cập schema cần thiết của cơ sở dữ liệu",
         }
     except Exception:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "not_ready",
-            "database": "error",
-            "message": "Lỗi kết nối kiểm tra database",
+            "database": "unavailable",
+            "schema": "outdated_or_invalid",
+            "message": "Schema chưa đúng phiên bản hoặc cấu hình database không hợp lệ",
         }

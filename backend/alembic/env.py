@@ -61,6 +61,11 @@ def run_migrations_online() -> None:
 
     if connectable is None:
         url = get_url()
+        from app.db.preview import preview_schema, validate_preview_database, scope_engine
+        schema = preview_schema()
+        if schema:
+            url = validate_preview_database(url)
+            version_table_schema = schema
         configuration = config.get_section(config.config_ini_section, {})
         configuration["sqlalchemy.url"] = url
 
@@ -69,6 +74,8 @@ def run_migrations_online() -> None:
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
         )
+        if schema:
+            scope_engine(connectable, schema)
 
         with connectable.connect() as connection:
             context.configure(

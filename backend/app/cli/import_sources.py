@@ -8,7 +8,7 @@ from typing import Literal
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.verifications import VerifiedEmployer, EmployerSource, EmployerClaim
@@ -112,11 +112,12 @@ class SourceManifest(BaseModel):
         return self
 
 
-def import_sources(db: Session, manifest: SourceManifest) -> tuple[int, int]:
+def import_sources(db: Session, manifest: SourceManifest, *, skip_unchanged: bool = False) -> tuple[int, int]:
     try:
         source_count = 0
         for entry in manifest.employers:
             employer = db.get(VerifiedEmployer, entry.id)
+            identity_unchanged = employer is not None and all(getattr(employer, field) == getattr(entry, field) for field in ('legal_name', 'tax_id', 'is_active', 'is_demo'))
             if employer is None:
                 employer = VerifiedEmployer(id=entry.id)
                 db.add(employer)
@@ -126,6 +127,16 @@ def import_sources(db: Session, manifest: SourceManifest) -> tuple[int, int]:
             for item in entry.sources:
                 source = db.get(EmployerSource, item.id)
                 if source is not None:
+                    if skip_unchanged and source.employer_id == employer.id and item.source_revision == source.source_revision:
+                        def comparable(value):
+                            return value.replace(tzinfo=timezone.utc) if isinstance(value, datetime) and value.tzinfo is None else value
+                        same_source = all(comparable(getattr(source, field)) == comparable(getattr(item, field)) for field in ('url', 'label_vi', 'evidence_excerpt_vi', 'reviewed_by', 'verified_at', 'valid_until', 'is_active', 'is_demo'))
+                        current_claims = {(claim.field, claim.value_key, claim.assertion, claim.is_active) for claim in db.scalars(select(EmployerClaim).where(EmployerClaim.source_id == source.id))}
+                        expected_claims = {(claim.field, claim_key(claim.field, claim.value), claim.assertion, True) for claim in item.claims}
+                        if not identity_unchanged or not same_source or current_claims != expected_claims:
+                            raise ValueError('Nguồn thay đổi nhưng chưa tăng revision.')
+                        source_count += 1
+                        continue
                     if source.employer_id != employer.id or item.source_revision <= source.source_revision:
                         raise ValueError("Nguồn đã tồn tại: không đổi chủ thể; cập nhật phải tăng revision.")
                     db.execute(delete(EmployerClaim).where(EmployerClaim.source_id == source.id))

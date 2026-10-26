@@ -14,7 +14,7 @@ export default function HomePage() {
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
       const res = await fetch(`${baseUrl}/ready`);
       const data = await res.json();
-      setResult(`HTTP ${res.status}: ${data.status} (DB: ${data.database})`);
+      setResult(`HTTP ${res.status}: ${data.detail?.message_vi || `${data.status} (DB: ${data.database})`}`);
     } catch {
       setResult("Lỗi: Không thể kết nối tới backend");
     } finally {

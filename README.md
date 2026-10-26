@@ -369,3 +369,55 @@ cd frontend && npm run test:e2e
 3. Chỉ bật `purge` sau khi đã duyệt lần xóa. CLI xóa vĩnh viễn các phiên hết hạn và analysis thuộc phiên đó trong một transaction, giữ dữ liệu còn hạn. Khi lịch hoạt động, bước xóa tự chạy mỗi ngày; quyền đọc hết sau 24h, còn dữ liệu có thể chờ thêm gần 24h đến lần cleanup kế tiếp (hoặc lâu hơn nếu job trễ/thất bại).
 
 Để nghiệm thu vận hành, ghi run URL, commit và số dòng xóa; kiểm tra dữ liệu thử đã hết hạn bị xóa và dữ liệu còn hạn vẫn tồn tại. Kiểm thử local/CI không thay thế bằng chứng lịch chạy thật. Muốn dừng lịch, vào Actions và **Disable workflow**. Cấu hình này chưa thiết lập cleanup cho DB production.
+# PR Preview tự động (Vercel + Render DEV)
+
+Sau khi thay đổi này được push và tích hợp, PR #N dùng backend
+`https://jobshield-pr-N.onrender.com`. Không nhập URL PR vào biến môi trường theo
+nhánh. `VERCEL_GIT_PULL_REQUEST_ID` quyết định routing; override cũ
+`NEXT_PUBLIC_API_BASE_URL` bị bỏ qua **chỉ trong Preview**. Production/local giữ API
+base hiện có. Vercel phải bật **Automatically expose System Environment Variables**
+(đã kiểm tra bật trên project `job-shield`).
+
+Browser gọi API cùng origin frontend, Next rewrite `/api/v1/*` và `/ready` sang
+Render. Không cần thêm origin của mỗi deployment vào CORS backend. Nhánh chưa gắn
+PR trả 503 `PR_NOT_ASSOCIATED`; mở PR rồi để Vercel tạo deployment có metadata PR
+(redeploy một lần nếu deployment được tạo trước PR). Không fallback về API cũ hoặc
+production. Render DEV base service `JobShield` phải bật Automatic PR Previews và
+giữ Docker Command trống để dùng CMD trong repo; giữ service slug `jobshield`.
+
+Docker startup chỉ tự bootstrap khi nhận đúng DEV PR hostname, `IS_PULL_REQUEST=true`
+và đúng Supabase DEV project `vleyapvlgnukcawgxozg`, session pooler port 5432, TLS.
+Mỗi PR dùng schema `preview_pr_N`: advisory lock có timeout, migration Alembic tới
+head và import `backend/data/verified_sources.json` trong transaction trước khi
+Uvicorn nhận request. Khởi động lại không nhân đôi nguồn; sửa nguồn phải tăng
+revision. Không nhập fixture tổng hợp E2E vào cloud.
+
+`search_path` được đặt và xác minh mỗi lần mượn connection; không fallback public.
+Supavisor thực tế bỏ qua startup `options`, nên không thay connect hook bằng tham
+số đó. Schema riêng giúp tránh PR ghi nhầm dữ liệu của nhau, nhưng **không phải
+phân quyền DB riêng**: các Preview vẫn dùng cùng credential DEV. Không cấp quyền
+anon hoặc expose schema PR qua Data API. Production và local không tự migration.
+
+`/healthz` và `/` chỉ kiểm tra process. `/ready` phải xác nhận revision Alembic và
+các cột model dùng được; thiếu schema trả 503. Render DEV nên đặt health check
+`/ready`. CI Playwright chạy production build qua cùng đường proxy. Workflow
+`Deployed Preview Smoke` chờ frontend deployment thành công, kiểm tra backend cùng
+SHA, schema current, nguồn FPT/provenance và tạo/đọc analysis bằng guest token.
+Nó chạy script tin cậy từ default branch, không chạy code PR với token GitHub;
+không cần Render/Vercel API token mới. Workflow cần có trên default branch để hoạt
+động đầy đủ; ở PR cài đặt lần đầu, job smoke được **skip** (không coi là pass)
+cho tới khi checker được merge vào default branch. Lượt push đầu tiên vẫn cần
+nghiệm thu cloud sau deploy.
+
+Test local qua proxy (backend riêng phải chạy và DB test đã migrate/nạp fixture):
+
+```sh
+cd frontend
+API_PROXY_TARGET=http://127.0.0.1:8000 PLAYWRIGHT_PORT=3001 npm run test:e2e
+```
+
+Schema PR được giữ lại khi đóng PR; không tự DROP hoặc sao chép dữ liệu public.
+Chỉ dọn schema DEV cụ thể sau khi không còn cần dữ liệu thử. Render Free vẫn có
+cold start; smoke chờ tối đa 300 giây rồi báo lỗi thay vì báo xanh giả. Nếu bật
+Vercel Deployment Protection, smoke từ Actions cần cơ chế truy cập được phê duyệt;
+không tắt protection chỉ để làm test xanh.

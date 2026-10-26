@@ -72,7 +72,7 @@ export async function createAnalysis(text: string): Promise<AnalysisResponse> {
     const errData = await response.json().catch(() => ({}));
     const message = Array.isArray(errData.detail)
       ? errData.detail.map((e: { msg?: string }) => e.msg).join(", ")
-      : errData.detail || `Lỗi yêu cầu: ${response.status}`;
+      : errData.detail?.message_vi || errData.detail || `Lỗi yêu cầu: ${response.status}`;
     throw new Error(message);
   }
 
