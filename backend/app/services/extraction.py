@@ -102,7 +102,7 @@ def extract_job_fields(text: str) -> JobExtracted:
         payments.append(no_fee.group(0))
 
     fee_match = re.search(
-        r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+tuyển\s+dụng\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.\n,;]*)?",
+        r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+(?:tuyển\s+dụng|hồ\s+sơ)\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.\n,;]*)?",
         text,
         re.IGNORECASE,
     )

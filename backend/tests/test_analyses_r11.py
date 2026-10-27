@@ -18,6 +18,7 @@ from app.main import app
 from app.models.analyses import Analysis
 from app.models.guest_sessions import GuestSession
 from app.services.analysis import perform_text_analysis
+from app.services.extraction import extract_job_fields
 from app.services.rule_engine import detect_indicators
 from app.cli.cleanup import purge_expired_sessions
 
@@ -447,6 +448,30 @@ def test_regression_upfront_fee_flexible_tail():
     assert len(indicators) == 1
     assert indicators[0].rule_id == "RULE_UPFRONT_FEE"
     assert indicators[0].matched_quote == "Yêu cầu nộp phí tuyển dụng 500.000 đồng trước phỏng vấn"
+
+
+def test_regression_upfront_fee_application_fee_variant():
+    """Luật phí nhận diện biến thể 'phí hồ sơ' — cụm từ chỉ dấu tài chính trước đó bị bỏ sót."""
+    text = "Yêu cầu đóng phí hồ sơ 500.000 đồng trước khi phỏng vấn."
+    indicators = detect_indicators(text)
+    assert len(indicators) == 1
+    assert indicators[0].rule_id == "RULE_UPFRONT_FEE"
+    assert indicators[0].category_vi == "Phí tuyển dụng trước"
+    assert indicators[0].matched_quote == "Yêu cầu đóng phí hồ sơ 500.000 đồng trước khi phỏng vấn"
+
+
+def test_regression_application_fee_extracted_as_required_payment():
+    """Trích xuất required_payments ghi nhận 'phí hồ sơ' cùng biến thể với indicator."""
+    text = "Yêu cầu đóng phí hồ sơ 500.000 đồng trước khi phỏng vấn."
+    job = extract_job_fields(text)
+    assert job.required_payments == "Yêu cầu đóng phí hồ sơ 500.000 đồng trước khi phỏng vấn"
+
+
+def test_regression_application_fee_negation_not_false_positive():
+    """Mệnh đề phủ định 'không thu phí hồ sơ' không tạo false-positive."""
+    text = "Công ty Bình An tuyển Tester. Không thu phí hồ sơ. Email: hr@binhan.example."
+    indicators = detect_indicators(text)
+    assert not any(ind.rule_id == "RULE_UPFRONT_FEE" for ind in indicators)
 
 
 def test_regression_claimed_intro_without_employer_records_not_impersonation():
