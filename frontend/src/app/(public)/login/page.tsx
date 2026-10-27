@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 export default function LoginPage() {
   const { user, loading, login, hasGuestSession, claimGuest, dismissGuestClaim } = useAuth();
   const router = useRouter();
-  const [showClaimPrompt, setShowClaimPrompt] = useState(false);
+  const showClaimPrompt = Boolean(user && hasGuestSession);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,11 +21,6 @@ export default function LoginPage() {
 
   const handleLoginSubmit = async (data: { email: string; password: string }) => {
     await login(data.email, data.password);
-    if (hasGuestSession) {
-      setShowClaimPrompt(true);
-    } else {
-      router.push("/dashboard");
-    }
   };
 
   const handleClaim = async () => {

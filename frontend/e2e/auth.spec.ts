@@ -5,6 +5,46 @@ test.describe("Xác thực và Quản lý dữ liệu cá nhân (R2)", () => {
   const securePassword = "secure_password_15_chars";
   const initialName = "Kiểm Thử Viên R2";
 
+  for (const mode of ["register", "login"] as const) {
+    test(`phân tích khách -> điều hướng không reload -> ${mode} -> đồng ý nhận đúng kết quả`, async ({ page, request }) => {
+      const email = `claim_${mode}_${Date.now()}@example.com`;
+      if (mode === "login") {
+        const response = await request.post("/api/v1/auth/register", {
+          data: { email, password: securePassword, full_name: initialName },
+        });
+        expect(response.status()).toBe(201);
+      }
+
+      await page.goto("/analyze");
+      await page.getByPlaceholder(/Dán toàn bộ văn bản tin tuyển dụng/i).fill(
+        "Công ty Kiểm thử R2 tuyển Lập trình viên tại Hà Nội. Lương 20 triệu/tháng. Liên hệ hr@r2.example. Không thu phí."
+      );
+      await page.getByRole("button", { name: /Phân tích tin tuyển dụng/i }).click();
+      await expect(page).toHaveURL(/\/analyze\?id=/);
+      const analysisId = new URL(page.url()).searchParams.get("id");
+      expect(analysisId).toBeTruthy();
+
+      // Keep AuthProvider mounted, just as when following links in the real guest journey.
+      await page.getByRole("link", { name: "Trang chủ", exact: true }).click();
+      await page.getByRole("link", { name: "Đăng nhập tài khoản", exact: true }).click();
+      if (mode === "register") await page.getByRole("link", { name: "Đăng ký ngay", exact: true }).click();
+      if (mode === "register") await page.getByLabel("Họ và tên").fill(initialName);
+      await page.getByLabel("Email").fill(email);
+      await page.getByLabel("Mật khẩu", { exact: true }).fill(securePassword);
+      await page.getByRole("button", { name: mode === "register" ? "Đăng ký tài khoản" : "Đăng nhập", exact: true }).click();
+
+      await expect(page.getByRole("heading", { name: "Tìm thấy kết quả phân tích phiên khách" })).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`/${mode}$`));
+      await page.getByRole("button", { name: "Nhận vào tài khoản" }).click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.getByRole("link", { name: "Lịch sử phân tích", exact: true }).click();
+      await expect(page.locator(`a[href="/analyze?id=${analysisId}"]`)).toBeVisible();
+      await page.reload();
+      await page.locator(`a[href="/analyze?id=${analysisId}"]`).click();
+      await expect(page.getByText(/Kết quả được lưu trong tài khoản của bạn/)).toBeVisible();
+    });
+  }
+
   test("Đăng ký -> Đăng xuất -> Đăng nhập -> Hồ sơ -> Phân tích cá nhân & Đã lưu", async ({
     page,
   }) => {

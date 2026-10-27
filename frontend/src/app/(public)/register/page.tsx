@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 export default function RegisterPage() {
   const { user, loading, register, hasGuestSession, claimGuest, dismissGuestClaim } = useAuth();
   const router = useRouter();
-  const [showClaimPrompt, setShowClaimPrompt] = useState(false);
+  const showClaimPrompt = Boolean(user && hasGuestSession);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,11 +25,6 @@ export default function RegisterPage() {
     full_name?: string;
   }) => {
     await register(data.email, data.password, data.full_name || "");
-    if (hasGuestSession) {
-      setShowClaimPrompt(true);
-    } else {
-      router.push("/dashboard");
-    }
   };
 
   const handleClaim = async () => {
