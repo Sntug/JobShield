@@ -1,5 +1,21 @@
 import { expect, test } from "@playwright/test";
 
+test("xác minh giữ cookie truy cập của Preview cùng origin", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "preview_access_test", value: "allowed", url: baseURL! }]);
+  await page.route("**/api/v1/verifications", async route => {
+    const headers = await route.request().allHeaders();
+    if (!headers.cookie?.includes("preview_access_test=allowed")) {
+      await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Preview authentication required" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto("/verify-employer");
+  await page.getByLabel("Mã số thuế").fill("0000000401");
+  await page.getByRole("button", { name: "Đối chiếu thông tin", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Khớp nguồn đã xác minh", exact: true })).toBeVisible();
+});
+
 test("đối chiếu thật, provenance, reset và dữ liệu ngân hàng không lưu", async ({ page }) => {
   await page.goto("/verify-employer");
   await page.getByLabel("Mã số thuế").fill("0000000401");

@@ -385,6 +385,19 @@ PR trả 503 `PR_NOT_ASSOCIATED`; mở PR rồi để Vercel tạo deployment c�
 production. Render DEV base service `JobShield` phải bật Automatic PR Previews và
 giữ Docker Command trống để dùng CMD trong repo; giữ service slug `jobshield`.
 
+Trên service DEV gốc và các PR Preview đã tồn tại, đặt **Build Filters → Included
+Paths = `**`**, không có Ignored Paths. Giữ Root Directory `backend/` và các đường
+dẫn Docker hiện có. Root Directory mặc định bỏ qua thay đổi ngoài backend, nên
+commit chỉ sửa frontend/workflow có thể không deploy backend và làm smoke lệch
+SHA vĩnh viễn; explicit filter toàn repo cho phép kích hoạt những thay đổi đó.
+Sau cấu hình phải xác nhận một push chỉ sửa ngoài `backend/` tự tạo deploy và
+`X-Commit-SHA` của backend bắt kịp HEAD, không dùng manual deploy làm bằng chứng.
+Đổi lại, DEV/Preview sẽ build backend cả khi chỉ sửa frontend hoặc tài liệu.
+
+Request xác minh dùng `credentials: "same-origin"` để giữ cookie truy cập Vercel
+Preview; không gửi cookie tới API khác origin và không thêm guest token. Không
+dùng `omit` cho request cùng origin trên Preview đang bật Deployment Protection.
+
 Docker startup chỉ tự bootstrap khi nhận đúng DEV PR hostname, `IS_PULL_REQUEST=true`
 và đúng Supabase DEV project `vleyapvlgnukcawgxozg`, session pooler port 5432, TLS.
 Mỗi PR dùng schema `preview_pr_N`: advisory lock có timeout, migration Alembic tới

@@ -115,7 +115,7 @@ def detect_indicators(
 
             # 1. Phí tuyển dụng trước (không phụ thuộc cố định đuôi "để nhận việc")
             m1 = re.search(
-                r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+tuyển\s+dụng\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.!?\n,;]*)?",
+                r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+(?:tuyển\s+dụng|hồ\s+sơ)\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.!?\n,;]*)?",
                 c,
                 re.IGNORECASE,
             )

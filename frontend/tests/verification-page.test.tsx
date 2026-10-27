@@ -20,7 +20,7 @@ describe("Verification page and client", () => {
     expect(url).toBe("/api/v1/verifications");
     expect(JSON.parse(options.body)).toEqual({ tax_id: "0000000001" });
     expect(options.headers).not.toHaveProperty("X-Guest-Session-Token");
-    expect(options.credentials).toBe("omit");
+    expect(options.credentials).toBe("same-origin");
     expect(write).not.toHaveBeenCalled();
   });
   it("preserves entered fields after server failure and succeeds on retry", async () => {
