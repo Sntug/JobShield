@@ -468,10 +468,19 @@ def test_regression_application_fee_extracted_as_required_payment():
 
 
 def test_regression_application_fee_negation_not_false_positive():
-    """Mệnh đề phủ định 'không thu phí hồ sơ' không tạo false-positive."""
-    text = "Công ty Bình An tuyển Tester. Không thu phí hồ sơ. Email: hr@binhan.example."
+    """Phủ định CÓ số tiền 'Không thu phí hồ sơ 500.000 đồng' phải chặn cả indicator lẫn trích xuất."""
+    text = "Không thu phí hồ sơ 500.000 đồng trước phỏng vấn."
     indicators = detect_indicators(text)
     assert not any(ind.rule_id == "RULE_UPFRONT_FEE" for ind in indicators)
+    job = extract_job_fields(text)
+    assert job.required_payments == "Không thu phí"
+
+
+def test_regression_negated_deposit_topup_transfer_not_extracted():
+    """Cùng lớp lỗi extraction: 'Không đặt cọc/nạp/chuyển ... có số tiền' không vào kết quả trích xuất."""
+    assert extract_job_fields("Không đặt cọc 1.000.000 đồng trước phỏng vấn.").required_payments is None
+    assert extract_job_fields("Không nạp 50.000 đồng để mở nhiệm vụ nhận hoa hồng.").required_payments is None
+    assert extract_job_fields("Không chuyển tiền vào tài khoản cá nhân để giữ chỗ.").suspicious_instructions is None
 
 
 def test_regression_claimed_intro_without_employer_records_not_impersonation():

@@ -5,7 +5,30 @@ Trích xuất 11 trường thông tin tuyển dụng từ văn bản thuần b�
 
 import re
 from typing import List, Optional
+
 from app.schemas.analyses import JobExtracted
+from app.services.rule_engine import CLAUSE_SPLIT, is_negated
+
+# Tách câu giữ nguyên offset trong văn bản gốc, bảo toàn số thập phân (500.000)
+SENTENCE_SPAN = re.compile(r"[^.!?\r\n]+(?:[.!?]+(?:\s+|$)|[\r\n]+)?")
+
+
+def in_negated_clause(text: str, position: int) -> bool:
+    """True nếu offset nằm trong mệnh đề mang nghĩa phủ định, cùng ngữ nghĩa tách với rule engine."""
+    for sent in SENTENCE_SPAN.finditer(text):
+        if not sent.start() <= position < sent.end():
+            continue
+        clause_start = sent.start()
+        clause_bounds = []
+        for delimiter in CLAUSE_SPLIT.finditer(sent.group(0)):
+            clause_bounds.append((clause_start, sent.start() + delimiter.start()))
+            clause_start = sent.start() + delimiter.end()
+        clause_bounds.append((clause_start, sent.end()))
+        for start, end in clause_bounds:
+            if start <= position < end:
+                return is_negated(text[start:end])
+        return False
+    return False
 
 
 def extract_job_fields(text: str) -> JobExtracted:
@@ -106,15 +129,15 @@ def extract_job_fields(text: str) -> JobExtracted:
         text,
         re.IGNORECASE,
     )
-    if fee_match:
+    if fee_match and not in_negated_clause(text, fee_match.start()):
         payments.append(fee_match.group(0).strip())
 
     deposit_match = re.search(r"Đặt cọc\s+[\d.]+\s*đồng\s+trước phỏng vấn", text, re.IGNORECASE)
-    if deposit_match:
+    if deposit_match and not in_negated_clause(text, deposit_match.start()):
         payments.append(deposit_match.group(0).strip())
 
     topup_match = re.search(r"Nạp\s+[\d.]+\s*đồng\s+để mở nhiệm vụ\s+nhận hoa hồng", text, re.IGNORECASE)
-    if topup_match:
+    if topup_match and not in_negated_clause(text, topup_match.start()):
         payments.append(topup_match.group(0).strip())
 
     if payments:
@@ -123,7 +146,7 @@ def extract_job_fields(text: str) -> JobExtracted:
     # 11. Chỉ dẫn đáng ngờ (suspicious_instructions)
     suspicious: List[str] = []
     transfer_match = re.search(r"Chuyển tiền vào tài khoản cá nhân[^.\n]*", text, re.IGNORECASE)
-    if transfer_match:
+    if transfer_match and not in_negated_clause(text, transfer_match.start()):
         suspicious.append(transfer_match.group(0).strip())
 
     channel_match = re.search(
