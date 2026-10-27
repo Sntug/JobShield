@@ -114,7 +114,7 @@ export async function createVerification(payload: VerificationCreate, signal?: A
     const timeout = AbortSignal.timeout(30_000);
     response = await fetch(`${getApiBaseUrl()}/api/v1/verifications`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload), credentials: "omit", cache: "no-store",
+      body: JSON.stringify(payload), credentials: "same-origin", cache: "no-store",
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
   } catch (error) {
