@@ -50,6 +50,7 @@ export default function HomePage() {
       <nav aria-label="Chức năng chính" className="mt-8 flex flex-wrap gap-4">
         <Link href="/analyze" className="rounded-lg bg-slate-900 px-4 py-3 font-medium text-white focus-visible:outline-2 focus-visible:outline-blue-600">Phân tích tin tuyển dụng</Link>
         <Link href="/verify-employer" className="rounded-lg border border-slate-300 px-4 py-3 font-medium focus-visible:outline-2 focus-visible:outline-blue-600">Xác minh nhà tuyển dụng</Link>
+        <Link href="/login" className="rounded-lg border border-slate-300 px-4 py-3 font-medium focus-visible:outline-2 focus-visible:outline-blue-600">Đăng nhập tài khoản</Link>
       </nav>
     </main>
   );

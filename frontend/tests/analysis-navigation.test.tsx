@@ -23,3 +23,35 @@ it("a late detail response cannot overwrite the form after browser Back", async 
   expect(screen.getByPlaceholderText(/Dán toàn bộ văn bản tin tuyển dụng/)).toBeInTheDocument();
   expect(screen.queryByText("Công ty kết quả cũ")).not.toBeInTheDocument();
 });
+
+import { fireEvent } from "@testing-library/react";
+import { clearAuthToken, setAuthToken } from "@/lib/api-client";
+
+it("a late private detail response cannot appear after logout", async () => {
+  let resolve!: (response: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+  setAuthToken("account-a");
+  window.history.replaceState({}, "", "/analyze?id=old-result");
+  render(<AnalyzePage />);
+  await waitFor(() => expect(resolve).toBeDefined());
+  act(() => clearAuthToken());
+  await act(async () => { resolve(new Response(JSON.stringify({ ...snapshot, expires_at: null }))); });
+  expect(screen.queryByText("Công ty kết quả cũ")).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/Dán toàn bộ văn bản tin tuyển dụng/)).toBeInTheDocument();
+});
+
+it("a late private analysis submission cannot appear after logout", async () => {
+  let resolve!: (response: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+  setAuthToken("account-a");
+  render(<AnalyzePage />);
+  fireEvent.change(screen.getByPlaceholderText(/Dán toàn bộ văn bản tin tuyển dụng/), {
+    target: { value: "Công ty riêng tuyển dụng nhân viên." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Phân tích tin tuyển dụng/ }));
+  await waitFor(() => expect(resolve).toBeDefined());
+  act(() => clearAuthToken());
+  await act(async () => { resolve(new Response(JSON.stringify({ ...snapshot, expires_at: null }))); });
+  expect(screen.queryByText("Công ty kết quả cũ")).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/Dán toàn bộ văn bản tin tuyển dụng/)).toBeInTheDocument();
+});

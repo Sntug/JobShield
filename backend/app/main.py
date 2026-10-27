@@ -64,8 +64,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Guest-Session-Token", "X-Request-ID"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Guest-Session-Token", "X-Request-ID"],
     expose_headers=["Retry-After", "X-Request-ID", "X-Commit-SHA"],
 )
 
@@ -92,8 +92,15 @@ async def trace_requests(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Commit-SHA"] = COMMIT_SHA
 
-    # Mọi phản hồi thuộc endpoint analyses (kể cả lỗi 401, 404, 422) đều không được lưu cache
-    if request.url.path == "/ready" or request.url.path.startswith("/api/v1/analyses") or verification_path(request.url.path):
+    # Mọi phản hồi thuộc endpoint cá nhân, auth và analyses đều không được lưu cache
+    if (
+        request.url.path == "/ready"
+        or request.url.path.startswith("/api/v1/analyses")
+        or request.url.path.startswith("/api/v1/auth")
+        or request.url.path.startswith("/api/v1/users")
+        or request.url.path.startswith("/api/v1/saved-analyses")
+        or verification_path(request.url.path)
+    ):
         response.headers["Cache-Control"] = "no-store"
 
     logger.info(

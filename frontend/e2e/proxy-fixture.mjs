@@ -25,7 +25,7 @@ createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const headers = {};
-    for (const key of ["content-type", "accept", "x-guest-session-token", "x-request-id", "origin"]) {
+    for (const key of ["content-type", "accept", "authorization", "x-guest-session-token", "x-request-id", "origin"]) {
       if (req.headers[key]) headers[key] = req.headers[key];
     }
     const response = await fetch(target + req.url, {
