@@ -9,27 +9,6 @@ from typing import List, Optional
 from app.schemas.analyses import JobExtracted
 from app.services.rule_engine import CLAUSE_SPLIT, is_negated
 
-# Tách câu giữ nguyên offset trong văn bản gốc, bảo toàn số thập phân (500.000)
-SENTENCE_SPAN = re.compile(r"[^.!?\r\n]+(?:[.!?]+(?:\s+|$)|[\r\n]+)?")
-
-
-def in_negated_clause(text: str, position: int) -> bool:
-    """True nếu offset nằm trong mệnh đề mang nghĩa phủ định, cùng ngữ nghĩa tách với rule engine."""
-    for sent in SENTENCE_SPAN.finditer(text):
-        if not sent.start() <= position < sent.end():
-            continue
-        clause_start = sent.start()
-        clause_bounds = []
-        for delimiter in CLAUSE_SPLIT.finditer(sent.group(0)):
-            clause_bounds.append((clause_start, sent.start() + delimiter.start()))
-            clause_start = sent.start() + delimiter.end()
-        clause_bounds.append((clause_start, sent.end()))
-        for start, end in clause_bounds:
-            if start <= position < end:
-                return is_negated(text[start:end])
-        return False
-    return False
-
 
 def extract_job_fields(text: str) -> JobExtracted:
     """Trích xuất 11 trường thực thể từ văn bản tin tuyển dụng.
@@ -119,35 +98,54 @@ def extract_job_fields(text: str) -> JobExtracted:
             job.application_requirements = req
 
     # 10. Khoản thanh toán yêu cầu (required_payments) - hỗ trợ dấu chấm phân cách hàng nghìn
+    # 11. Chỉ dẫn đáng ngờ (suspicious_instructions)
+    # Duyệt câu/mệnh đề đúng cách của rule engine: loại mệnh đề phủ định trước khi tìm
+    # yêu cầu tài chính, nên match hợp lệ sau một match bị loại vẫn được tìm thấy.
     payments: List[str] = []
+    suspicious: List[str] = []
     no_fee = re.search(r"Không thu phí(?:\s+hoặc\s+đặt cọc)?", text, re.IGNORECASE)
     if no_fee:
         payments.append(no_fee.group(0))
 
-    fee_match = re.search(
-        r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+(?:tuyển\s+dụng|hồ\s+sơ)\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.\n,;]*)?",
-        text,
-        re.IGNORECASE,
-    )
-    if fee_match and not in_negated_clause(text, fee_match.start()):
-        payments.append(fee_match.group(0).strip())
+    for sent in re.split(r"(?<=[.!?])\s+|[\r\n]+", text):
+        s = sent.strip().rstrip(".")
+        if not s:
+            continue
+        for clause in CLAUSE_SPLIT.split(s):
+            clause = clause.strip()
+            if not clause or is_negated(clause):
+                continue
 
-    deposit_match = re.search(r"Đặt cọc\s+[\d.]+\s*đồng\s+trước phỏng vấn", text, re.IGNORECASE)
-    if deposit_match and not in_negated_clause(text, deposit_match.start()):
-        payments.append(deposit_match.group(0).strip())
+            fee_match = re.search(
+                r"(?:yêu cầu\s+)?(?:đóng|thu|nộp)\s+phí\s+(?:tuyển\s+dụng|hồ\s+sơ)\s+[\d.]+\s*(?:đồng|đ|vnd)(?:\s+(?:để|trước|nhận)[^.\n,;]*)?",
+                clause,
+                re.IGNORECASE,
+            )
+            if fee_match:
+                payments.append(fee_match.group(0).strip())
 
-    topup_match = re.search(r"Nạp\s+[\d.]+\s*đồng\s+để mở nhiệm vụ\s+nhận hoa hồng", text, re.IGNORECASE)
-    if topup_match and not in_negated_clause(text, topup_match.start()):
-        payments.append(topup_match.group(0).strip())
+            deposit_match = re.search(r"Đặt cọc\s+[\d.]+\s*đồng\s+trước phỏng vấn", clause, re.IGNORECASE)
+            if deposit_match:
+                payments.append(deposit_match.group(0).strip())
+
+            topup_match = re.search(r"Nạp\s+[\d.]+\s*đồng\s+để mở nhiệm vụ\s+nhận hoa hồng", clause, re.IGNORECASE)
+            if topup_match:
+                payments.append(topup_match.group(0).strip())
+
+            transfer_match = re.search(r"Chuyển tiền vào tài khoản cá nhân[^.\n]*", clause, re.IGNORECASE)
+            if transfer_match:
+                suspicious.append(transfer_match.group(0).strip())
+
+            otp_match = re.search(
+                r"Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc",
+                clause,
+                re.IGNORECASE,
+            )
+            if otp_match:
+                suspicious.append(otp_match.group(0).strip())
 
     if payments:
         job.required_payments = "; ".join(payments)
-
-    # 11. Chỉ dẫn đáng ngờ (suspicious_instructions)
-    suspicious: List[str] = []
-    transfer_match = re.search(r"Chuyển tiền vào tài khoản cá nhân[^.\n]*", text, re.IGNORECASE)
-    if transfer_match and not in_negated_clause(text, transfer_match.start()):
-        suspicious.append(transfer_match.group(0).strip())
 
     channel_match = re.search(
         r"Chỉ liên hệ qua nhóm chat kín;\s*không liên hệ email trên website công ty",
@@ -156,14 +154,6 @@ def extract_job_fields(text: str) -> JobExtracted:
     )
     if channel_match:
         suspicious.append(channel_match.group(0).strip())
-
-    otp_match = re.search(
-        r"Gửi ảnh hai mặt CCCD và mã OTP ngân hàng qua chat trước khi nhận việc",
-        text,
-        re.IGNORECASE,
-    )
-    if otp_match:
-        suspicious.append(otp_match.group(0).strip())
 
     if suspicious:
         job.suspicious_instructions = "; ".join(suspicious)

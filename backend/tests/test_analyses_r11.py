@@ -483,6 +483,22 @@ def test_regression_negated_deposit_topup_transfer_not_extracted():
     assert extract_job_fields("Không chuyển tiền vào tài khoản cá nhân để giữ chỗ.").suspicious_instructions is None
 
 
+def test_regression_fee_after_negated_clause_still_extracted():
+    """Phí ở vế hợp lệ sau vế phủ định vẫn được trích; match bị loại không dừng việc tìm match tiếp theo."""
+    text = "Không thu phí hồ sơ 100.000 đồng, nhưng yêu cầu nộp phí hồ sơ 500.000 đồng trước phỏng vấn."
+    indicators = detect_indicators(text)
+    assert any(ind.rule_id == "RULE_UPFRONT_FEE" and "500.000" in ind.matched_quote for ind in indicators)
+    job = extract_job_fields(text)
+    assert job.required_payments == "Không thu phí; yêu cầu nộp phí hồ sơ 500.000 đồng trước phỏng vấn"
+
+
+def test_regression_negation_survives_decimal_amount():
+    """Tách câu không được cắt vỡ '1.000.000' làm mất phủ định đầu câu — hai luồng cùng không cảnh báo."""
+    text = "Không yêu cầu đóng khoản 1.000.000 đồng hay nộp phí hồ sơ 500.000 đồng trước phỏng vấn."
+    assert not any(ind.rule_id == "RULE_UPFRONT_FEE" for ind in detect_indicators(text))
+    assert extract_job_fields(text).required_payments is None
+
+
 def test_regression_claimed_intro_without_employer_records_not_impersonation():
     """Không tự suy ra mạo danh từ tên công ty vs domain email khi chưa có employer_records."""
     text = "Chúng tôi là phòng tuyển dụng Công ty Bình An, chỉ nhận hồ sơ tại hr@gmail.com."
