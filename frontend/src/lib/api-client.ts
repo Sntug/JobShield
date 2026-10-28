@@ -2,6 +2,7 @@ import {
   AnalysisListResponse,
   AnalysisResponse,
   ClaimGuestResponse,
+  ExtractionResponse,
   SavedAnalysisListResponse,
   TokenResponse,
   User,
@@ -84,7 +85,7 @@ function getApiBaseUrl(): string {
 async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = getAuthToken();
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(url, { ...options, headers, cache: "no-store" });
   // A response from an earlier account must never invalidate the current session.
@@ -417,4 +418,59 @@ export async function createVerification(
     throw new Error("Phản hồi xác minh không hợp lệ. Vui lòng thử lại.");
   }
   return data;
+}
+
+export async function extractFromUrl(url: string): Promise<ExtractionResponse> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/extractions/url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url }),
+  });
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After") || "60";
+    throw new Error(`Quá giới hạn tần suất yêu cầu. Vui lòng thử lại sau ${retryAfter} giây.`);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const msg = data?.detail || "Không thể trích xuất nội dung từ liên kết. Vui lòng thử lại hoặc dán văn bản trực tiếp.";
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+
+  return data as ExtractionResponse;
+}
+
+export async function extractFromImage(file: File): Promise<ExtractionResponse> {
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Kích thước tệp vượt quá giới hạn tối đa 5MB.");
+  }
+  const allowed = ["image/png", "image/jpeg", "image/webp"];
+  if (file.type && !allowed.includes(file.type.toLowerCase())) {
+    throw new Error("Định dạng tệp không được hỗ trợ. Chỉ chấp nhận ảnh PNG, JPEG hoặc WebP.");
+  }
+
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/extractions/image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "image/png",
+      "X-Filename": encodeURIComponent(file.name),
+    },
+    body: file,
+  });
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After") || "60";
+    throw new Error(`Quá giới hạn tần suất yêu cầu. Vui lòng thử lại sau ${retryAfter} giây.`);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const msg = data?.detail || "Không thể trích xuất văn bản từ ảnh. Vui lòng thử lại hoặc dán văn bản trực tiếp.";
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+
+  return data as ExtractionResponse;
 }

@@ -1,12 +1,13 @@
 # JobShield
 
-## Trạng thái triển khai local — 26/10/2026
+## Trạng thái triển khai local — 28/10/2026
 
 - `/analyze`: phân tích văn bản, lưu/đọc snapshot theo phiên khách; cảnh báo rủi ro độc lập với kết quả đối chiếu nguồn.
+- R3 tại `/analyze`: nhập ảnh PNG/JPEG/WebP hoặc URL HTTP/HTTPS công khai, xem/sửa văn bản trích xuất và dán thủ công khi thất bại. API `/api/v1/extractions/{image,url}` và `/api/v1/extractions` không lưu ảnh hoặc nội dung trích xuất vào DB.
 - `/verify-employer`: tra cứu công khai sáu nhóm thông tin, hiển thị căn cứ theo trường, dữ kiện thiếu và khuyến nghị; không lưu payload tra cứu/ngân hàng.
 - `POST /api/v1/verifications`: validation, giới hạn body/tần suất, lỗi lược dữ liệu riêng và nguồn có provenance/revision. Kho nguồn gồm ba bảng với composite FK chống gắn sai chủ thể.
 - Bộ nguồn khởi đầu thật và hướng dẫn quản trị ở [backend/data/README.md](backend/data/README.md). Fixture E2E nằm riêng trong `backend/tests/fixtures/`, không tự nạp khi app khởi động.
-- R1.2/R1.3 đã có implementation và bằng chứng local; deployment/UAT người dùng là bước nghiệm thu riêng, chưa được suy ra từ test tự động. Các trang tài khoản/quản trị/ảnh/URL vẫn thuộc mốc sau.
+- R1.2/R1.3 và R3 có implementation và kiểm chứng local; deployment/UAT người dùng là bước nghiệm thu riêng, chưa được suy ra từ test tự động. Các trang quản trị vẫn thuộc mốc sau.
 
 Backend (từ `backend/`, `DATABASE_URL` được cấu hình riêng cho đúng DB đích):
 
@@ -25,6 +26,10 @@ Frontend (từ `frontend/`, `NEXT_PUBLIC_API_BASE_URL` trỏ backend tương ứ
 npm ci --include=optional
 npm run dev
 ```
+
+OCR local cần `tesseract` trong `PATH` và dữ liệu ngôn ngữ `vie`, `eng`; Dockerfile backend đã cài đủ. Nếu thiếu engine hoặc ảnh không đọc được, giao diện cho dán văn bản thủ công. Ảnh tối đa 5 MiB và 16 triệu pixel; kiểm tra chữ ký, cấu trúc ảnh và MIME trước OCR. Không lấy chữ từ metadata hoặc fixture DEMO.
+
+URL chỉ hỗ trợ cổng 80/443 và IP public; kiểm tra lại từng redirect, kết nối tới IP đã duyệt và giữ hostname gốc để xác minh TLS. Nội dung tải tối đa 1 MiB; không vượt đăng nhập/CAPTCHA hoặc chạy JavaScript. Deadline HTTP ngắt cả header, body và TLS đang chờ; phân giải DNS dùng timeout của hệ điều hành. Mọi phản hồi extraction có `Cache-Control: no-store`; rate limit 10 request/60 giây/IP dùng chung cho ba endpoint, trên từng worker.
 
 Không chạy migration hoặc import vào production chỉ vì các lệnh đã được ghi ở đây. Bản migration mới chỉ thêm ba bảng nguồn; bài downgrade xóa các bảng nguồn nên chỉ diễn tập trên DB/schema thử riêng.
 

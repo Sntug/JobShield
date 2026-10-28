@@ -5,6 +5,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 # Enable bytecode compilation and use copy link mode for cached layers
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
