@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.describe("Trang phân tích tin tuyển dụng (/analyze)", () => {
   test("luồng submit -> loading -> hiển thị kết quả -> reload -> Back/Forward -> phiên khác", async ({

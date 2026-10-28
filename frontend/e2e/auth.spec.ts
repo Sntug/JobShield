@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.describe("Xác thực và Quản lý dữ liệu cá nhân (R2)", () => {
   const uniqueEmail = `user_${Date.now()}@example.com`;

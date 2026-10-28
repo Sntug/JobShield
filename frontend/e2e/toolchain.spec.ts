@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("trang shell có styles và nút nhận focus bằng bàn phím", async ({ page }) => {
   await page.goto("/");

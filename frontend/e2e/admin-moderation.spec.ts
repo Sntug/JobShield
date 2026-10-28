@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.describe("Quản trị và Kiểm duyệt (R4.2 - R4.4)", () => {
   const normalUserEmail = `normal_${Date.now()}@example.com`;
