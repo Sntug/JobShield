@@ -107,6 +107,7 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
                 <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/50 dark:text-red-200">
                   {ind.category_vi}
                 </span>
+                {ind.weight != null && <span className="ml-2 text-xs text-red-800">Ưu tiên: {ind.weight}</span>}
                 <blockquote className="mt-1.5 border-l-2 border-red-400 pl-3 text-base italic text-slate-800 dark:border-red-700 dark:text-slate-200">
                   &ldquo;{ind.matched_quote}&rdquo;
                 </blockquote>

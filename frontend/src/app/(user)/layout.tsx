@@ -11,7 +11,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
 
-  const isUserPortal = ["/dashboard", "/history", "/saved", "/profile"].includes(pathname);
+  const isUserPortal = ["/dashboard", "/history", "/saved", "/profile"].includes(pathname) || pathname === "/reports" || pathname.startsWith("/reports/");
 
   useEffect(() => {
     if (isUserPortal && !loading && !user && !error) {
@@ -46,6 +46,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     { href: "/dashboard", label: "Tổng quan" },
     { href: "/history", label: "Lịch sử phân tích" },
     { href: "/saved", label: "Tin đã lưu" },
+    { href: "/reports", label: "Báo cáo" },
     { href: "/profile", label: "Hồ sơ & Bảo mật" },
   ];
 

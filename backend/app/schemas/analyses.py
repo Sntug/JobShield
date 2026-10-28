@@ -45,6 +45,8 @@ class IndicatorItem(BaseModel):
     category_vi: str
     rule_id: str
     matched_quote: str
+    weight: Optional[int] = None
+    explanation_vi: Optional[str] = None
 
 
 class EvidenceData(BaseModel):

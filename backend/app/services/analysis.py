@@ -10,6 +10,7 @@ def perform_text_analysis(
     text: str,
     employer_records: Optional[List[Dict[str, Any]]] = None,
     is_demo: bool = False,
+    rule_settings: Optional[Dict[str, Any]] = None,
 ) -> Tuple[JobExtracted, List[IndicatorItem], str, str, str, EvidenceData, List[str]]:
     """Thực hiện trích xuất và phân tích rủi ro thuần túy từ văn bản.
 
@@ -27,6 +28,14 @@ def perform_text_analysis(
         except ValidationError:
             employer_records, curated = [], False
     indicators = detect_indicators(text, employer_records=employer_records, is_demo=is_demo)
+    if rule_settings is not None:
+        indicators = [item for item in indicators if item.rule_id not in rule_settings or rule_settings[item.rule_id].enabled]
+        for item in indicators:
+            rule = rule_settings.get(item.rule_id)
+            if rule is not None:
+                item.weight = rule.weight
+                item.explanation_vi = rule.explanation_vi
+        indicators.sort(key=lambda item: item.weight or 0, reverse=True)
     risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi = evaluate_analysis(
         text=text,
         job=job,

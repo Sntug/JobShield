@@ -1,6 +1,8 @@
 """API endpoints for recruitment text analysis."""
 
 import uuid
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -11,6 +13,7 @@ from app.core.rate_limit import check_rate_limit
 from app.core.security import generate_guest_token, hash_guest_token
 from app.db.session import get_db
 from app.models.analyses import Analysis
+from app.models.indicators import RiskIndicator
 from app.models.guest_sessions import GuestSession
 from app.models.saved_analyses import SavedAnalysis
 from app.models.users import User
@@ -120,11 +123,15 @@ def create_analysis(
         session_id = session.id
         expires_at = session.expires_at
 
+    rule_settings = {rule.code: rule for rule in db.query(RiskIndicator).all()}
+    rule_snapshot = [(code, rule.enabled, rule.weight, rule.explanation_vi) for code, rule in sorted(rule_settings.items())]
+    rules_version = "2026.10-" + hashlib.sha256(json.dumps(rule_snapshot, ensure_ascii=False).encode()).hexdigest()[:12]
     # Thực hiện phân tích văn bản thuần
     job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi = (
         perform_text_analysis(
             payload.text,
             employer_records=load_for_job(db, extract_job_fields(payload.text)),
+            rule_settings=rule_settings,
             is_demo=False,
         )
     )
@@ -142,7 +149,7 @@ def create_analysis(
         evidence=evidence.model_dump(),
         actions_vi=actions_vi,
         engine_version="1.2.0",
-        rules_version="2026.10",
+        rules_version=rules_version,
         created_at=now,
         expires_at=expires_at,
     )

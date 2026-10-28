@@ -1,8 +1,27 @@
 import {
+  AdminStats,
   AnalysisListResponse,
   AnalysisResponse,
   ClaimGuestResponse,
+  EmployerAdmin,
+  EmployerAdminCreate,
+  EmployerAdminListResponse,
+  EmployerAdminUpdate,
   ExtractionResponse,
+  ModerationActionCreate,
+  PublicWarning,
+  PublicWarningCreate,
+  PublicWarningListResponse,
+  PublicWarningSupersede,
+  PublicWarningWithdraw,
+  Report,
+  ReportAdmin,
+  ReportAdminListResponse,
+  ReportCreate,
+  ReportListResponse,
+  RiskIndicator,
+  RiskIndicatorListResponse,
+  RiskIndicatorUpdateRequest,
   SavedAnalysisListResponse,
   TokenResponse,
   User,
@@ -473,4 +492,284 @@ export async function extractFromImage(file: File): Promise<ExtractionResponse> 
   }
 
   return data as ExtractionResponse;
+}
+
+// -------------------------------------------------------------
+// R4: Reports, Moderation, Rules, Employers, Warnings & Stats
+// -------------------------------------------------------------
+
+export async function submitReport(payload: ReportCreate): Promise<Report> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/reports`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể gửi báo cáo."));
+  }
+  return data as Report;
+}
+
+export async function getMyReports(page = 1, pageSize = 10): Promise<ReportListResponse> {
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/reports?page=${page}&page_size=${pageSize}`
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải danh sách báo cáo."));
+  }
+  return data as ReportListResponse;
+}
+
+export async function getMyReport(reportId: string): Promise<Report> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/reports/${reportId}`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải chi tiết báo cáo."));
+  }
+  return data as Report;
+}
+
+export async function getAdminReports(
+  status?: string,
+  page = 1,
+  pageSize = 10
+): Promise<ReportAdminListResponse> {
+  const query = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (status) query.set("status", status);
+
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/reports?${query.toString()}`
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải danh sách kiểm duyệt."));
+  }
+  return data as ReportAdminListResponse;
+}
+
+export async function getAdminReport(reportId: string): Promise<ReportAdmin> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/reports/${reportId}`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải chi tiết kiểm duyệt báo cáo."));
+  }
+  return data as ReportAdmin;
+}
+
+export async function moderateReport(
+  reportId: string,
+  payload: ModerationActionCreate
+): Promise<ReportAdmin> {
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/reports/${reportId}/moderation`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  const data = await response.json().catch(() => null);
+  if (response.status === 409) {
+    throw new Error(
+      "Xung đột phiên bản: Báo cáo đã được cập nhật bởi quản trị viên khác. Vui lòng làm mới trang."
+    );
+  }
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể thực hiện kiểm duyệt."));
+  }
+  return data as ReportAdmin;
+}
+
+export async function getAdminEmployers(
+  page = 1,
+  pageSize = 10,
+  search?: string
+): Promise<EmployerAdminListResponse> {
+  const query = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (search) query.set("search", search);
+
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/employers?${query.toString()}`
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải danh sách nhà tuyển dụng."));
+  }
+  return data as EmployerAdminListResponse;
+}
+
+export async function createAdminEmployer(payload: EmployerAdminCreate): Promise<EmployerAdmin> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/employers`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể thêm nhà tuyển dụng."));
+  }
+  return data as EmployerAdmin;
+}
+
+export async function updateAdminEmployer(
+  employerId: string,
+  payload: EmployerAdminUpdate
+): Promise<EmployerAdmin> {
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/employers/${employerId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể cập nhật nhà tuyển dụng."));
+  }
+  return data as EmployerAdmin;
+}
+
+export async function getAdminRules(): Promise<RiskIndicatorListResponse> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/rules`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải danh sách quy tắc."));
+  }
+  return data as RiskIndicatorListResponse;
+}
+
+export async function updateAdminRule(
+  code: string,
+  payload: RiskIndicatorUpdateRequest
+): Promise<RiskIndicator> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/rules/${code}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể cập nhật quy tắc."));
+  }
+  return data as RiskIndicator;
+}
+
+export async function getAdminStatistics(): Promise<AdminStats> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/statistics`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải thống kê quản trị."));
+  }
+  return data as AdminStats;
+}
+
+export async function getPublicWarnings(page = 1, pageSize = 10): Promise<PublicWarningListResponse> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/v1/warnings?page=${page}&page_size=${pageSize}`,
+    { cache: "no-store" }
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải danh sách cảnh báo."));
+  }
+  return data as PublicWarningListResponse;
+}
+
+export async function getPublicWarning(warningId: string): Promise<PublicWarning> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/warnings/${warningId}`, {
+    cache: "no-store",
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể tải chi tiết cảnh báo."));
+  }
+  return data as PublicWarning;
+}
+
+export async function createPublicWarning(payload: PublicWarningCreate): Promise<PublicWarning> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/warnings`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể xuất bản cảnh báo."));
+  }
+  return data as PublicWarning;
+}
+
+export async function supersedePublicWarning(
+  warningId: string,
+  payload: PublicWarningSupersede
+): Promise<PublicWarning> {
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/warnings/${warningId}/supersede`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể đính chính cảnh báo."));
+  }
+  return data as PublicWarning;
+}
+
+export async function withdrawPublicWarning(
+  warningId: string,
+  payload: PublicWarningWithdraw
+): Promise<PublicWarning> {
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/admin/warnings/${warningId}/withdraw`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, "Không thể thu hồi cảnh báo."));
+  }
+  return data as PublicWarning;
+}
+
+export interface EmployerSourceAdmin {
+  id: string;
+  url: string;
+  label_vi: string;
+  evidence_excerpt_vi: string;
+  is_active: boolean;
+  verified_at: string;
+  valid_until: string | null;
+}
+
+export async function getEmployerSources(employerId: string): Promise<EmployerSourceAdmin[]> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/employers/${employerId}/sources`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(apiErrorMessage(data, "Không thể tải nguồn xác minh."));
+  return data;
+}
+
+export async function addEmployerSource(employerId: string, payload: { url: string; label_vi: string; evidence_excerpt_vi: string }): Promise<void> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/employers/${employerId}/sources`, { method: "POST", body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(apiErrorMessage(data, "Không thể thêm nguồn xác minh."));
+}
+
+export async function addEmployerClaim(employerId: string, payload: { source_id: string; field: string; value: string | NonNullable<VerificationCreate["bank_account"]>; assertion: "supports" | "refutes" }): Promise<void> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/employers/${employerId}/claims`, { method: "POST", body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(apiErrorMessage(data, "Không thể thêm dữ kiện đối chiếu."));
+}
+
+export async function getAdminWarnings(page = 1): Promise<PublicWarningListResponse> {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/admin/warnings?page=${page}&page_size=10`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(apiErrorMessage(data, "Không thể tải cảnh báo quản trị."));
+  return data;
 }
