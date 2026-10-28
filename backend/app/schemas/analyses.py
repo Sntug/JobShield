@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
 
 class AnalysisCreate(BaseModel):
@@ -77,6 +77,14 @@ class AnalysisResponse(BaseModel):
     created_at: datetime
     expires_at: Optional[datetime] = None
     is_saved: Optional[bool] = False
+
+    @computed_field
+    @property
+    def risk_score(self) -> Optional[int]:
+        """Uncalibrated points, counted once per rule from the saved weights."""
+        if any(indicator.weight is None for indicator in self.indicators):
+            return None
+        return min(100, sum({indicator.rule_id: indicator.weight or 0 for indicator in self.indicators}.values()))
 
 
 class AnalysisListResponse(BaseModel):

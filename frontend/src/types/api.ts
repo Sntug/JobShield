@@ -45,6 +45,7 @@ export interface AnalysisResponse {
   id: string;
   guest_session_token?: string | null;
   risk_label_vi: string;
+  risk_score?: number | null;
   verification_label_vi: string;
   finding_vi: string;
   job: JobExtracted;

@@ -92,6 +92,7 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
             Kết luận sơ bộ
           </h3>
           <p className="mt-1 text-base text-slate-700 dark:text-slate-300">{finding_vi}</p>
+          {analysis.risk_score != null && <p className="mt-2 text-sm text-slate-600">Điểm chỉ dấu: {analysis.risk_score}/100. Đây là tổng trọng số của các rule đã kích hoạt, không phải xác suất lừa đảo.</p>}
         </div>
       </div>
 

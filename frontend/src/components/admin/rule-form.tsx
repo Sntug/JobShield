@@ -63,7 +63,7 @@ export function RuleForm({ rule, onSuccess, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="rule-weight" className="block text-xs font-semibold text-slate-900">
-          Trọng số ưu tiên (1 - 100)
+          Trọng số chỉ dấu (1 - 100)
         </label>
         <input
           id="rule-weight"

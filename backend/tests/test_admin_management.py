@@ -283,3 +283,17 @@ def test_rule_weight_changes_priority_and_is_snapshotted(client, db_session):
     assert changed[0].rule_id == "RULE_UPFRONT_FEE"
     assert changed[0].weight == 100
     assert indicators[0].weight == 90
+
+
+def test_weight_changes_new_score_without_rewriting_saved_analysis(client):
+    headers = {"Authorization": f"Bearer {create_admin_token(client)}"}
+    text = "Yêu cầu đóng phí hồ sơ 300.000 đồng trước khi nhận việc."
+    before = client.post("/api/v1/analyses", headers=headers, json={"text": text}).json()
+    assert before["risk_score"] == 35
+    client.patch("/api/v1/admin/rules/RULE_UPFRONT_FEE", headers=headers, json={"weight": 50})
+    after = client.post("/api/v1/analyses", headers=headers, json={"text": text}).json()
+    assert after["risk_score"] == 50
+    assert after["rules_version"] != before["rules_version"]
+    snapshot = client.get(f"/api/v1/analyses/{before['id']}", headers=headers).json()
+    assert snapshot["risk_score"] == 35
+    assert snapshot["rules_version"] == before["rules_version"]

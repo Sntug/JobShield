@@ -50,7 +50,7 @@ export default function AdminRulesPage() {
         </div>
       )}
 
-        <p className="text-sm text-slate-600">Trọng số quyết định thứ tự ưu tiên dấu hiệu trong phân tích mới; không phải xác suất lừa đảo.</p>
+        <p className="text-sm text-slate-600">Điểm chỉ dấu cộng trọng số một lần cho mỗi rule đã kích hoạt, tối đa 100. Trọng số cũng quyết định thứ tự dấu hiệu; điểm này không phải xác suất lừa đảo.</p>
 
       {!isLoading && !isError && rules.length > 0 && (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
