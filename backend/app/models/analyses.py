@@ -2,25 +2,46 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
-from sqlalchemy import String, Text, DateTime, JSON, ForeignKey, Uuid
+from typing import Any, Dict, List, Optional
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 
 class Analysis(Base):
-    """Kết quả phân tích tin tuyển dụng lưu trữ dưới dạng immutable snapshot."""
+    """Kết quả phân tích tin tuyển dụng lưu trữ dưới dạng immutable snapshot.
+
+    Mỗi bản ghi thuộc về đúng một chủ sở hữu: hoặc là khách (session_id), hoặc là user (user_id).
+    Khi thuộc user: expires_at là NULL (lưu vĩnh viễn đến khi user xóa).
+    Khi thuộc guest: expires_at có giá trị (hết hạn sau 24h).
+    """
 
     __tablename__ = "analyses"
+    __table_args__ = (
+        CheckConstraint(
+            "(session_id IS NOT NULL AND user_id IS NULL) OR (session_id IS NULL AND user_id IS NOT NULL)",
+            name="ck_analysis_owner",
+        ),
+        CheckConstraint(
+            "(user_id IS NOT NULL AND expires_at IS NULL) OR (session_id IS NOT NULL AND expires_at IS NOT NULL)",
+            name="ck_analysis_expiry",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    session_id: Mapped[uuid.UUID] = mapped_column(
+    session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("guest_sessions.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -48,8 +69,15 @@ class Analysis(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), index=True, nullable=False
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=True
     )
 
     session = relationship("GuestSession", back_populates="analyses")
+    user = relationship("User", back_populates="analyses")
+    saved_by_users = relationship(
+        "SavedAnalysis",
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

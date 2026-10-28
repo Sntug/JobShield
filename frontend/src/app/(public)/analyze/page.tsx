@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnalysisResponse } from "@/types/api";
 import {
+  AUTH_CHANGED_EVENT,
   clearGuestToken,
   createAnalysis,
   getAnalysis,
+  getAuthToken,
   getGuestToken,
 } from "@/lib/api-client";
 import { RecruitmentInputForm } from "@/components/analysis/recruitment-input-form";
@@ -18,18 +20,20 @@ export default function AnalyzePage() {
   const [isSessionInvalid, setIsSessionInvalid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const revision = useRef(0);
 
   // Đồng bộ trạng thái với query ?id=... trong URL trên mount và khi Back/Forward (popstate)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     let active = true;
-    let revision = 0;
     const syncWithUrl = async () => {
-      const current = ++revision;
+      const current = ++revision.current;
+      setAnalysis(null);
+      setIsSubmitting(false);
       const params = new URLSearchParams(window.location.search);
       const id = params.get("id");
-      const token = getGuestToken();
+      const token = getAuthToken() || getGuestToken();
 
       if (id) {
         if (!token) {
@@ -42,10 +46,10 @@ export default function AnalyzePage() {
         setError(null);
         try {
           const data = await getAnalysis(id);
-          if (!active || current !== revision) return;
+          if (!active || current !== revision.current) return;
           setAnalysis(data);
         } catch (err: unknown) {
-          if (!active || current !== revision) return;
+          if (!active || current !== revision.current) return;
           const e = err as { message?: string; code?: string };
           setAnalysis(null);
           setError("Không thể tải lại kết quả trước đó. Bạn có thể dán và phân tích lại.");
@@ -53,7 +57,7 @@ export default function AnalyzePage() {
             setIsSessionInvalid(true);
           }
         } finally {
-          if (active && current === revision) setIsLoadingDetail(false);
+          if (active && current === revision.current) setIsLoadingDetail(false);
         }
       } else {
         // Ignore detail responses that belong to the previous URL.
@@ -66,21 +70,25 @@ export default function AnalyzePage() {
 
     syncWithUrl();
     window.addEventListener("popstate", syncWithUrl);
+    window.addEventListener(AUTH_CHANGED_EVENT, syncWithUrl);
     return () => {
       active = false;
-      revision += 1;
+      revision.current += 1;
       window.removeEventListener("popstate", syncWithUrl);
+      window.removeEventListener(AUTH_CHANGED_EVENT, syncWithUrl);
     };
   }, []);
 
   const handleAnalyze = async (text: string) => {
     if (isSubmitting || isLoadingDetail) return;
+    const current = ++revision.current;
     setIsSubmitting(true);
     setError(null);
     setIsSessionInvalid(false);
 
     try {
       const data = await createAnalysis(text);
+      if (current !== revision.current) return;
       setAnalysis(data);
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
@@ -88,13 +96,14 @@ export default function AnalyzePage() {
         window.history.pushState({ id: data.id }, "", url.toString());
       }
     } catch (err: unknown) {
+      if (current !== revision.current) return;
       const e = err as { message?: string; code?: string };
       setError(e.message || "Đã xảy ra lỗi khi phân tích tin.");
       if (e.code === "SESSION_INVALID") {
         setIsSessionInvalid(true);
       }
     } finally {
-      setIsSubmitting(false);
+      if (current === revision.current) setIsSubmitting(false);
     }
   };
 

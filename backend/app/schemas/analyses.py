@@ -73,4 +73,14 @@ class AnalysisResponse(BaseModel):
     engine_version: str
     rules_version: str
     created_at: datetime
-    expires_at: datetime
+    expires_at: Optional[datetime] = None
+    is_saved: Optional[bool] = False
+
+
+class AnalysisListResponse(BaseModel):
+    """Danh sách kết quả phân tích có phân trang."""
+
+    items: List[AnalysisResponse]
+    total: int
+    page: int
+    page_size: int

@@ -22,13 +22,14 @@ def purge_expired_sessions(
 ) -> Tuple[int, int]:
     """Xóa các guest_sessions đã quá hạn (expires_at <= reference_time) và các analyses liên quan.
 
+    Tuyệt đối không xóa các bài phân tích đã được user nhận quyền (user_id IS NOT NULL).
     Thực hiện xóa analyses trước rồi đến guest_sessions trong cùng một transaction để bảo đảm
     tương thích hoàn toàn trên cả SQLite (test) và PostgreSQL (staging/production).
     Trả về: (số session đã xóa, số analysis đã xóa).
     """
     now = reference_time or datetime.now(timezone.utc)
 
-    # 1. Xóa các bản ghi analyses thuộc các phiên đã hết hạn
+    # 1. Xóa các bản ghi analyses thuộc các phiên khách đã hết hạn (chỉ xóa khi chưa được chuyển quyền)
     expired_session_ids = (
         db.query(GuestSession.id)
         .filter(GuestSession.expires_at <= now)
@@ -36,7 +37,11 @@ def purge_expired_sessions(
     )
     deleted_analyses = (
         db.query(Analysis)
-        .filter(Analysis.session_id.in_(expired_session_ids))
+        .filter(
+            Analysis.session_id.isnot(None),
+            Analysis.session_id.in_(expired_session_ids),
+            Analysis.user_id.is_(None),
+        )
         .delete(synchronize_session=False)
     )
 

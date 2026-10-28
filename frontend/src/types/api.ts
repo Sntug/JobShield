@@ -52,11 +52,58 @@ export interface AnalysisResponse {
   engine_version: string;
   rules_version: string;
   created_at: string;
-  expires_at: string;
+  expires_at?: string | null;
+  is_saved?: boolean;
+}
+
+export interface AnalysisListResponse {
+  items: AnalysisResponse[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface AnalysisCreate {
   text: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  created_at: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
+}
+
+export interface ClaimGuestResponse {
+  claimed_count: number;
+  claimed_ids: string[];
+}
+
+export interface UserStats {
+  total_analyses: number;
+  saved_analyses: number;
+  risk_distribution: Record<string, number>;
+}
+
+export interface SavedAnalysisItem {
+  analysis_id: string;
+  saved_at: string;
+  analysis: AnalysisResponse;
+}
+
+export interface SavedAnalysisListResponse {
+  items: SavedAnalysisItem[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export type VerificationField = "company_name" | "tax_id" | "contact_email" | "recruitment_website" | "social_channel_url" | "bank_account";

@@ -44,10 +44,12 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
     }
   };
 
-  const formattedExpiry = new Date(expires_at).toLocaleString("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const formattedExpiry = expires_at
+    ? new Date(expires_at).toLocaleString("vi-VN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
 
   return (
     <div className="w-full space-y-6 break-words">
@@ -245,9 +247,13 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
         </div>
       )}
 
-      {/* Footer: Thông tin lưu trữ phiên khách */}
+      {/* Footer: Thông tin lưu trữ phiên khách / tài khoản */}
       <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-        <span>Kết quả lưu trong phiên khách đến: {formattedExpiry}</span>
+        <span>
+          {formattedExpiry
+            ? `Kết quả lưu trong phiên khách đến: ${formattedExpiry}`
+            : "Kết quả được lưu trong tài khoản của bạn"}
+        </span>
         <span>ID phân tích: {analysis.id.slice(0, 8)}...</span>
       </div>
     </div>
