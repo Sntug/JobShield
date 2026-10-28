@@ -47,8 +47,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Install OCR engine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng
+
       - name: Run Pytest (Unit & PostgreSQL Integration)
-        run: uv run pytest -v
+        run: OCR_REQUIRED=1 uv run pytest -v
 
   frontend-check:
     name: Frontend Lint, Typecheck & Vitest
@@ -118,6 +123,11 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --frozen
+
+      - name: Install OCR engine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

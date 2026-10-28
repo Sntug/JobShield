@@ -137,3 +137,23 @@ export interface VerificationResponse {
   verification_version: string;
   checked_at: string;
 }
+
+export interface ExtractionResponse {
+  request_id: string;
+  success: boolean;
+  source_type: "image" | "url";
+  text: string | null;
+  failure_vi: string | null;
+  source_name?: string | null;
+  confidence?: number | null;
+}
+
+export interface URLExtractionRequest {
+  url: string;
+}
+
+export interface ImageExtractionRequest {
+  image_base64: string;
+  filename?: string;
+  content_type?: string;
+}
