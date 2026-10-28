@@ -8,6 +8,7 @@ Hỗ trợ:
 """
 
 import logging
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -40,6 +41,8 @@ def run_system_tesseract(image_bytes: bytes) -> Optional[str]:
             input=image_bytes,
             capture_output=True,
             timeout=10,
+            # Parallel OCR wastes the CPU quota on small instances; scope this to the child.
+            env={**os.environ, "OMP_THREAD_LIMIT": "1"},
         )
         if proc.returncode == 0:
             text = proc.stdout.decode("utf-8", errors="replace").strip()
