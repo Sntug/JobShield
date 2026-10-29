@@ -77,3 +77,15 @@ def get_optional_current_user(
         return None
     _, user = get_current_session_and_user(authorization=authorization, db=db)
     return user
+
+
+def require_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Dependency chỉ cho phép tài khoản có quyền admin truy cập."""
+    if not user.role or user.role.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yêu cầu quyền quản trị viên",
+        )
+    return user

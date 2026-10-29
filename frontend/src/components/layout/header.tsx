@@ -28,6 +28,9 @@ export function Header() {
             <Link href="/verify-employer" className="hover:text-slate-900 transition-colors">
               Xác minh công ty
             </Link>
+            <Link href="/safety" className="hover:text-slate-900 transition-colors">
+              An toàn
+            </Link>
             {user && (
               <>
                 <Link href="/dashboard" className="hover:text-slate-900 transition-colors">
@@ -39,6 +42,14 @@ export function Header() {
                 <Link href="/saved" className="hover:text-slate-900 transition-colors">
                   Đã lưu
                 </Link>
+                <Link href="/reports" className="hover:text-slate-900 transition-colors">
+                  Báo cáo
+                </Link>
+                {user.role === "admin" && (
+                  <Link href="/admin" className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">
+                    Quản trị
+                  </Link>
+                )}
               </>
             )}
           </nav>

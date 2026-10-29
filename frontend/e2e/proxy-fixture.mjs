@@ -28,6 +28,11 @@ createServer(async (req, res) => {
     for (const key of ["content-type", "accept", "authorization", "x-guest-session-token", "x-request-id", "x-filename", "origin"]) {
       if (req.headers[key]) headers[key] = req.headers[key];
     }
+    // Uvicorn trusts this loopback-only test proxy, never a browser-supplied IP.
+    const client = req.headers["x-jobshield-e2e-client"];
+    if (typeof client === "string" && /^[a-f0-9]{24}$/.test(client)) {
+      headers["x-forwarded-for"] = "2001:db8:" + client.match(/.{4}/g).join(":");
+    }
     const response = await fetch(target + req.url, {
       method: req.method, headers,
       body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks),

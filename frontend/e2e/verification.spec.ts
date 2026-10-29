@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("xác minh giữ cookie truy cập của Preview cùng origin", async ({ page, context, baseURL }) => {
   await context.addCookies([{ name: "preview_access_test", value: "allowed", url: baseURL! }]);

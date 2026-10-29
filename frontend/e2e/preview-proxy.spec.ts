@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("same-origin proxy preserves schema readiness, validation and trace headers", async ({ request }) => {
   const ready = await request.get("/ready");

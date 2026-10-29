@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("trang shell có styles và nút nhận focus bằng bàn phím", async ({ page }) => {
   await page.goto("/");
@@ -18,13 +18,6 @@ test("trang shell có styles và nút nhận focus bằng bàn phím", async ({ 
 test("route chưa triển khai trả 404 tiếng Việt thay vì lỗi server", async ({ page }) => {
   const routes = [
     "/analysis/g1-example",
-    "/safety",
-    "/reports/new",
-    "/reports",
-    "/admin",
-    "/admin/reports",
-    "/admin/employers",
-    "/admin/rules",
     "/g1-missing-page",
   ];
 
