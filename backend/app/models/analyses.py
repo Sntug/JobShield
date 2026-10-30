@@ -62,6 +62,9 @@ class Analysis(Base):
     # Hành động khuyến nghị
     actions_vi: Mapped[List[str]] = mapped_column(JSON, nullable=False)
 
+    # Lớp phân tích ngữ nghĩa AI tùy chọn (nullable khi không dùng AI hoặc fallback)
+    ai_insights: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
     # Snapshot metadata
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="0.1.0")
     rules_version: Mapped[str] = mapped_column(String(20), nullable=False, default="2026.10")

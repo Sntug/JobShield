@@ -122,6 +122,93 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
         </p>
       )}
 
+      {/* Phân tích ngữ nghĩa chuyên sâu bằng AI (Layer 2) */}
+      {analysis.ai_insights && (
+        <div
+          data-testid="ai-insights-card"
+          className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm dark:border-indigo-900/40 dark:bg-indigo-950/20 space-y-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 pb-3 dark:border-indigo-900/50">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+              <span>Phân tích ngữ nghĩa AI</span>
+              {analysis.ai_insights.provider && analysis.ai_insights.provider !== "none" && (
+                <span className="text-xs font-normal lowercase text-indigo-700 dark:text-indigo-400">
+                  ({analysis.ai_insights.provider}
+                  {analysis.ai_insights.model ? `/${analysis.ai_insights.model}` : ""})
+                </span>
+              )}
+            </h3>
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                analysis.ai_insights.status === "success"
+                  ? "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/60 dark:text-indigo-200 dark:border-indigo-800"
+                  : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-800"
+              }`}
+            >
+              {analysis.ai_insights.status === "success"
+                ? "AI Hoạt động"
+                : analysis.ai_insights.status === "fallback_no_consent"
+                ? "Chưa cấp quyền AI (Quy tắc chuẩn)"
+                : "Dùng quy tắc chuẩn (Fallback)"}
+            </span>
+          </div>
+
+          {analysis.ai_insights.status === "success" ? (
+            <div className="space-y-3 text-base text-slate-800 dark:text-slate-200">
+              {analysis.ai_insights.semantic_summary_vi && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase text-indigo-900 dark:text-indigo-300">
+                    Nhận định ngữ cảnh
+                  </h4>
+                  <p className="mt-1 leading-relaxed text-slate-700 dark:text-slate-300">
+                    {analysis.ai_insights.semantic_summary_vi}
+                  </p>
+                </div>
+              )}
+
+              {analysis.ai_insights.suspicious_patterns_vi &&
+                analysis.ai_insights.suspicious_patterns_vi.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase text-indigo-900 dark:text-indigo-300">
+                      Mẫu bất thường phát hiện từ ngữ cảnh ({analysis.ai_insights.suspicious_patterns_vi.length})
+                    </h4>
+                    <ul className="mt-1.5 list-disc pl-5 space-y-1 text-slate-700 dark:text-slate-300">
+                      {analysis.ai_insights.suspicious_patterns_vi.map((pat, idx) => (
+                        <li key={idx}>{pat}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {analysis.ai_insights.reasoning_vi && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase text-indigo-900 dark:text-indigo-300">
+                    Lập luận giải thích rủi ro
+                  </h4>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {analysis.ai_insights.reasoning_vi}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <p>
+                Hệ thống đang bảo vệ và phân tích bằng bộ quy tắc chuẩn đã kiểm chứng (Rule-Based Engine).
+              </p>
+            </div>
+          )}
+
+          {analysis.ai_insights.limitations_vi && analysis.ai_insights.limitations_vi.length > 0 && (
+            <div className="border-t border-indigo-100/80 pt-2.5 text-xs text-slate-500 dark:text-slate-400 dark:border-indigo-900/40">
+              {analysis.ai_insights.limitations_vi.map((lim, idx) => (
+                <p key={idx}>{lim}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Thông tin đối chiếu nguồn & thiếu sót (Evidence Provenance) */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">

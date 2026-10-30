@@ -6,8 +6,13 @@ import { extractFromImage, extractFromUrl } from "@/lib/api-client";
 
 export type InputMode = "text" | "image" | "url";
 
+export interface AnalysisOptions {
+  use_ai?: boolean;
+  ai_consent?: boolean;
+}
+
 interface RecruitmentInputFormProps {
-  onSubmit: (text: string) => Promise<void>;
+  onSubmit: (text: string, options?: AnalysisOptions) => Promise<void>;
   isLoading?: boolean;
   error?: string | null;
   onResetSession?: () => void;
@@ -28,6 +33,8 @@ export function RecruitmentInputForm({
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [extractionSuccess, setExtractionSuccess] = useState<string | null>(null);
+  const [useAi, setUseAi] = useState(false);
+  const [aiConsent, setAiConsent] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_CODE_POINTS = 10000;
@@ -107,7 +114,11 @@ export function RecruitmentInputForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim() || isLoading || isExtracting || isOverLimit) return;
-    await onSubmit(text);
+    if (useAi) {
+      await onSubmit(text, { use_ai: true, ai_consent: aiConsent });
+    } else {
+      await onSubmit(text);
+    }
   };
 
   return (
@@ -322,6 +333,54 @@ export function RecruitmentInputForm({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Tùy chọn phân tích chuyên sâu bằng AI (Layer 2) */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-900/60 space-y-2.5">
+        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            name="enable_ai"
+            id="enable-ai-checkbox"
+            checked={useAi}
+            onChange={(e) => {
+              setUseAi(e.target.checked);
+              if (!e.target.checked) setAiConsent(false);
+            }}
+            disabled={isLoading || isExtracting}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800"
+          />
+          <div className="flex-1">
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Bật hỗ trợ phân tích ngữ nghĩa AI chuyên sâu (Tùy chọn)
+            </span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Sử dụng mô hình ngôn ngữ lớn để làm rõ ngữ cảnh, bẫy tâm lý và cung cấp giải thích chi tiết bằng tiếng Việt.
+            </p>
+          </div>
+        </label>
+
+        {useAi && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900/50 dark:bg-amber-950/20 space-y-2 mt-2">
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              <strong>Lưu ý quyền riêng tư:</strong> Nội dung tin tuyển dụng sẽ được chuyển tiếp tới nhà cung cấp AI bên ngoài (Google Gemini / LLM) để phân tích. JobShield không chia sẻ danh tính, phiên làm việc hay tài khoản của bạn. Tuyệt đối không dán mật khẩu, số CCCD, mã OTP hoặc tài khoản ngân hàng của bạn.
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                name="ai_consent"
+                id="ai-consent-checkbox"
+                checked={aiConsent}
+                onChange={(e) => setAiConsent(e.target.checked)}
+                disabled={isLoading || isExtracting}
+                className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              <span className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                Tôi đồng ý gửi nội dung tin tuyển dụng này tới dịch vụ AI để phân tích ngữ nghĩa
+              </span>
+            </label>
+          </div>
+        )}
       </div>
 
       {error && (

@@ -304,7 +304,10 @@ export async function listSavedAnalyses(
   return response.json();
 }
 
-export async function createAnalysis(text: string): Promise<AnalysisResponse> {
+export async function createAnalysis(
+  text: string,
+  options?: { use_ai?: boolean; ai_consent?: boolean }
+): Promise<AnalysisResponse> {
   const authToken = getAuthToken();
   const guestToken = getGuestToken();
 
@@ -318,10 +321,14 @@ export async function createAnalysis(text: string): Promise<AnalysisResponse> {
     headers["X-Guest-Session-Token"] = guestToken;
   }
 
+  const payload: { text: string; use_ai?: boolean; ai_consent?: boolean } = { text };
+  if (options?.use_ai !== undefined) payload.use_ai = options.use_ai;
+  if (options?.ai_consent !== undefined) payload.ai_consent = options.ai_consent;
+
   const response = await authenticatedFetch(`${getApiBaseUrl()}/api/v1/analyses`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(payload),
   });
 
   if (response.status === 401) {

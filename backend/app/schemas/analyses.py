@@ -10,6 +10,8 @@ class AnalysisCreate(BaseModel):
     """Schema request gửi tin tuyển dụng để phân tích."""
 
     text: str
+    use_ai: Optional[bool] = False
+    ai_consent: Optional[bool] = False
 
     @field_validator("text")
     @classmethod
@@ -58,6 +60,19 @@ class EvidenceData(BaseModel):
     is_demo: bool = False
 
 
+class AIInsightsData(BaseModel):
+    """Dữ liệu phân tích ngữ nghĩa chuyên sâu bằng AI (Layer 2)."""
+
+    status: str  # "success", "fallback_no_consent", "fallback_disabled", "fallback_missing_key", "fallback_timeout", "fallback_error"
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    semantic_summary_vi: Optional[str] = None
+    suspicious_patterns_vi: List[str] = []
+    reasoning_vi: Optional[str] = None
+    confidence_note_vi: Optional[str] = None
+    limitations_vi: List[str] = []
+
+
 class AnalysisResponse(BaseModel):
     """Schema kết quả phân tích tin tuyển dụng hoàn chỉnh."""
 
@@ -72,6 +87,7 @@ class AnalysisResponse(BaseModel):
     indicators: List[IndicatorItem]
     evidence: EvidenceData
     actions_vi: List[str]
+    ai_insights: Optional[AIInsightsData] = None
     engine_version: str
     rules_version: str
     created_at: datetime
