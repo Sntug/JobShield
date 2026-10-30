@@ -41,6 +41,23 @@ export interface EvidenceData {
   is_demo: boolean;
 }
 
+export interface AIInsightsData {
+  status:
+    | "success"
+    | "fallback_no_consent"
+    | "fallback_disabled"
+    | "fallback_missing_key"
+    | "fallback_timeout"
+    | "fallback_error";
+  provider?: string | null;
+  model?: string | null;
+  semantic_summary_vi?: string | null;
+  suspicious_patterns_vi: string[];
+  reasoning_vi?: string | null;
+  confidence_note_vi?: string | null;
+  limitations_vi: string[];
+}
+
 export interface AnalysisResponse {
   id: string;
   guest_session_token?: string | null;
@@ -52,6 +69,7 @@ export interface AnalysisResponse {
   indicators: IndicatorItem[];
   evidence: EvidenceData;
   actions_vi: string[];
+  ai_insights?: AIInsightsData | null;
   engine_version: string;
   rules_version: string;
   created_at: string;
@@ -68,6 +86,8 @@ export interface AnalysisListResponse {
 
 export interface AnalysisCreate {
   text: string;
+  use_ai?: boolean;
+  ai_consent?: boolean;
 }
 
 export interface User {

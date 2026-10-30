@@ -79,7 +79,10 @@ export default function AnalyzePage() {
     };
   }, []);
 
-  const handleAnalyze = async (text: string) => {
+  const handleAnalyze = async (
+    text: string,
+    options?: { use_ai?: boolean; ai_consent?: boolean }
+  ) => {
     if (isSubmitting || isLoadingDetail) return;
     const current = ++revision.current;
     setIsSubmitting(true);
@@ -87,7 +90,7 @@ export default function AnalyzePage() {
     setIsSessionInvalid(false);
 
     try {
-      const data = await createAnalysis(text);
+      const data = await createAnalysis(text, options);
       if (current !== revision.current) return;
       setAnalysis(data);
       if (typeof window !== "undefined") {

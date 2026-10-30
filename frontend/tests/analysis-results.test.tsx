@@ -92,4 +92,48 @@ describe("AnalysisResults", () => {
     fireEvent.click(resetBtn);
     expect(handleReset).toHaveBeenCalledTimes(1);
   });
+
+  it("renders AI semantic analysis card when ai_insights is success", () => {
+    const analysisWithAi: AnalysisResponse = {
+      ...mockAnalysis,
+      ai_insights: {
+        status: "success",
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+        semantic_summary_vi: "Tin có dấu hiệu lừa đảo cộng tác viên nạp tiền.",
+        suspicious_patterns_vi: [
+            "Hứa hẹn thu nhập cao bất thường",
+            "Yêu cầu nạp tiền",
+        ],
+        reasoning_vi: "Mô hình nhiệm vụ nạp tiền lừa đảo tiền cọc.",
+        confidence_note_vi: "Đánh giá sơ bộ.",
+        limitations_vi: ["Không thay thế thẩm tra pháp lý."],
+      },
+    };
+
+    render(<AnalysisResults analysis={analysisWithAi} onReset={vi.fn()} />);
+
+    expect(screen.getByTestId("ai-insights-card")).toBeInTheDocument();
+    expect(screen.getByText(/AI Hoạt động/i)).toBeInTheDocument();
+    expect(screen.getByText("Tin có dấu hiệu lừa đảo cộng tác viên nạp tiền.")).toBeInTheDocument();
+    expect(screen.getByText("Hứa hẹn thu nhập cao bất thường")).toBeInTheDocument();
+    expect(screen.getByText("Mô hình nhiệm vụ nạp tiền lừa đảo tiền cọc.")).toBeInTheDocument();
+  });
+
+  it("renders fallback notice when ai_insights has fallback_no_consent", () => {
+    const analysisWithFallback: AnalysisResponse = {
+      ...mockAnalysis,
+      ai_insights: {
+        status: "fallback_no_consent",
+        suspicious_patterns_vi: [],
+        limitations_vi: ["Người dùng chưa đồng ý gửi dữ liệu ra ngoài."],
+      },
+    };
+
+    render(<AnalysisResults analysis={analysisWithFallback} onReset={vi.fn()} />);
+
+    expect(screen.getByTestId("ai-insights-card")).toBeInTheDocument();
+    expect(screen.getByText(/Chưa cấp quyền AI \(Quy tắc chuẩn\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Người dùng chưa đồng ý gửi dữ liệu ra ngoài.")).toBeInTheDocument();
+  });
 });

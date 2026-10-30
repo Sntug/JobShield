@@ -51,6 +51,47 @@ describe("RecruitmentInputForm", () => {
     expect(handleSubmit).toHaveBeenCalledWith("Tuyển dụng 🚀");
   });
 
+  it("handles AI toggle and consent flow correctly on submit", async () => {
+    const handleSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<RecruitmentInputForm onSubmit={handleSubmit} />);
+
+    const textarea = screen.getByPlaceholderText(/Dán toàn bộ văn bản tin tuyển dụng/i);
+    fireEvent.change(textarea, { target: { value: "Tin tuyển dụng có bật AI" } });
+
+    const aiToggle = screen.getByRole("checkbox", {
+      name: /Bật hỗ trợ phân tích ngữ nghĩa AI chuyên sâu/i,
+    });
+    expect(aiToggle).not.toBeChecked();
+
+    // Bật AI toggle
+    fireEvent.click(aiToggle);
+    expect(aiToggle).toBeChecked();
+
+    // Khối lưu ý quyền riêng tư và checkbox consent xuất hiện
+    expect(screen.getByText(/Lưu ý quyền riêng tư:/i)).toBeInTheDocument();
+    const consentCheckbox = screen.getByRole("checkbox", {
+      name: /Tôi đồng ý gửi nội dung tin tuyển dụng này tới dịch vụ AI/i,
+    });
+    expect(consentCheckbox).not.toBeChecked();
+
+    // Submit khi bật AI nhưng chưa tích consent
+    const submitBtn = screen.getByRole("button", { name: /Phân tích tin tuyển dụng/i });
+    fireEvent.click(submitBtn);
+    expect(handleSubmit).toHaveBeenCalledWith("Tin tuyển dụng có bật AI", {
+      use_ai: true,
+      ai_consent: false,
+    });
+
+    // Tích consent và submit lại
+    fireEvent.click(consentCheckbox);
+    expect(consentCheckbox).toBeChecked();
+    fireEvent.click(submitBtn);
+    expect(handleSubmit).toHaveBeenCalledWith("Tin tuyển dụng có bật AI", {
+      use_ai: true,
+      ai_consent: true,
+    });
+  });
+
   it("displays session error and calls onResetSession when reset button clicked", () => {
     const handleReset = vi.fn();
     render(

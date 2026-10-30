@@ -18,6 +18,7 @@ from app.models.guest_sessions import GuestSession
 from app.models.saved_analyses import SavedAnalysis
 from app.models.users import User
 from app.schemas.analyses import (
+    AIInsightsData,
     AnalysisCreate,
     AnalysisListResponse,
     AnalysisResponse,
@@ -25,7 +26,7 @@ from app.schemas.analyses import (
     IndicatorItem,
     JobExtracted,
 )
-from app.services.analysis import perform_text_analysis
+from app.services.analysis import perform_analysis_with_ai, perform_text_analysis
 from app.services.extraction import extract_job_fields
 from app.services.verification_store import load_for_job
 
@@ -38,6 +39,10 @@ def _to_analysis_response(
     is_saved: bool = False,
 ) -> AnalysisResponse:
     """Helper chuyển đổi ORM Analysis sang AnalysisResponse."""
+    ai_insights = None
+    if analysis.ai_insights:
+        ai_insights = AIInsightsData(**analysis.ai_insights)
+
     return AnalysisResponse(
         id=analysis.id,
         guest_session_token=guest_session_token,
@@ -48,6 +53,7 @@ def _to_analysis_response(
         indicators=[IndicatorItem(**ind) for ind in analysis.indicators],
         evidence=EvidenceData(**analysis.evidence),
         actions_vi=analysis.actions_vi,
+        ai_insights=ai_insights,
         engine_version=analysis.engine_version,
         rules_version=analysis.rules_version,
         created_at=analysis.created_at,
@@ -126,13 +132,15 @@ def create_analysis(
     rule_settings = {rule.code: rule for rule in db.query(RiskIndicator).all()}
     rule_snapshot = [(code, rule.enabled, rule.weight, rule.explanation_vi) for code, rule in sorted(rule_settings.items())]
     rules_version = "2026.10-" + hashlib.sha256(json.dumps(rule_snapshot, ensure_ascii=False).encode()).hexdigest()[:12]
-    # Thực hiện phân tích văn bản thuần
-    job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi = (
-        perform_text_analysis(
+    # Thực hiện phân tích văn bản (Layer 1 Rule-based và Layer 2 AI tùy chọn)
+    job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi, ai_insights = (
+        perform_analysis_with_ai(
             payload.text,
             employer_records=load_for_job(db, extract_job_fields(payload.text)),
             rule_settings=rule_settings,
             is_demo=False,
+            use_ai=bool(payload.use_ai),
+            ai_consent=bool(payload.ai_consent),
         )
     )
 
@@ -148,7 +156,8 @@ def create_analysis(
         indicators=[ind.model_dump() for ind in indicators],
         evidence=evidence.model_dump(),
         actions_vi=actions_vi,
-        engine_version="1.2.0",
+        ai_insights=ai_insights.model_dump() if ai_insights else None,
+        engine_version="1.3.0",
         rules_version=rules_version,
         created_at=now,
         expires_at=expires_at,

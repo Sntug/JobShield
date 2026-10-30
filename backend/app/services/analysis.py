@@ -1,7 +1,9 @@
 """Analysis orchestration service."""
 
 from typing import Any, Dict, List, Optional, Tuple
-from app.schemas.analyses import EvidenceData, IndicatorItem, JobExtracted
+from app.core.config import Settings
+from app.schemas.analyses import AIInsightsData, EvidenceData, IndicatorItem, JobExtracted
+from app.services.ai.orchestrator import run_ai_assisted_analysis
 from app.services.extraction import extract_job_fields
 from app.services.rule_engine import detect_indicators, evaluate_analysis
 
@@ -60,3 +62,33 @@ def perform_text_analysis(
         )
         actions_vi = list(dict.fromkeys(actions_vi + verification.recommended_actions_vi))
     return job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi
+
+
+def perform_analysis_with_ai(
+    text: str,
+    employer_records: Optional[List[Dict[str, Any]]] = None,
+    is_demo: bool = False,
+    rule_settings: Optional[Dict[str, Any]] = None,
+    use_ai: bool = False,
+    ai_consent: bool = False,
+    ai_settings: Optional[Settings] = None,
+) -> Tuple[JobExtracted, List[IndicatorItem], str, str, str, EvidenceData, List[str], Optional[AIInsightsData]]:
+    """Phân tích kết hợp Layer 1 (quy tắc) và Layer 2 (ngữ nghĩa AI tùy chọn)."""
+    job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi = (
+        perform_text_analysis(
+            text=text,
+            employer_records=employer_records,
+            is_demo=is_demo,
+            rule_settings=rule_settings,
+        )
+    )
+    ai_insights = run_ai_assisted_analysis(
+        text=text,
+        job=job,
+        indicators=indicators,
+        risk_label_vi=risk_label_vi,
+        use_ai=use_ai,
+        ai_consent=ai_consent,
+        settings=ai_settings,
+    )
+    return job, indicators, risk_label_vi, verification_label_vi, finding_vi, evidence, actions_vi, ai_insights
