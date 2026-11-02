@@ -131,20 +131,23 @@ export default function AnalyzePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav aria-label="Điều hướng" className="mb-6 flex flex-wrap gap-5 text-sm">
-        <Link href="/" className="text-blue-700 underline dark:text-blue-300">Trang chủ</Link>
-        <Link href="/verify-employer" className="text-blue-700 underline dark:text-blue-300">Xác minh nhà tuyển dụng</Link>
+      <nav aria-label="Điều hướng" className="mb-6 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <Link href="/" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Trang chủ</Link>
+        <span>/</span>
+        <span className="text-slate-900 dark:text-slate-100 font-semibold">Phân tích tin tuyển dụng</span>
+        <span className="mx-1 text-slate-300 dark:text-slate-700">•</span>
+        <Link href="/verify-employer" className="text-sky-600 hover:underline dark:text-sky-400">Xác minh nhà tuyển dụng</Link>
       </nav>
       <div className="mb-8 text-center sm:text-left">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
           Phân tích tin tuyển dụng
         </h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
           Dán nội dung tin tuyển dụng để phát hiện dấu hiệu rủi ro, trích xuất dữ kiện và việc cần xác minh trước khi nộp hồ sơ.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-8">
         {analysis ? (
           <AnalysisResults analysis={analysis} onReset={handleReset} />
         ) : (
