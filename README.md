@@ -1,5 +1,54 @@
 # JobShield
 
+## Trạng thái kiểm chứng local sau review — 02/11/2026
+
+Các chức năng R0–R5 đã được triển khai. Bộ kiểm thử, tải, smoke và restore local đã chạy lại sau review; kết quả cụ thể ở dưới. Đây chưa phải nghiệm thu deployment hoặc production, và restore local không chứng minh khả năng khôi phục database production.
+
+- **R1 & R1.2/R1.3 (Phân tích tin tuyển dụng & Đối chiếu nguồn):** Phân tích văn bản tin tuyển dụng không cần đăng nhập (`/analyze`), xác minh doanh nghiệp qua kho nguồn kiểm duyệt (`/verify-employer`).
+- **R2 (Tài khoản & Phân quyền):** Đăng ký, đăng nhập JWT HTTP-only, chuyển giao phiên phân tích khách sang tài khoản (`POST /api/v1/auth/claim-guest`), quản lý và thu hồi phiên an toàn.
+- **R3 (Trích xuất đa phương thức an toàn):** Trích xuất văn bản từ ảnh PNG/JPEG/WebP (OCR Tesseract có kiểm tra MIME, giới hạn 5 MiB / 16 MP) và trích xuất URL (SSRF protection chống IP nội bộ, timeout, giới hạn tải 1 MiB).
+- **R4 (Báo cáo cộng đồng & Cổng kiểm duyệt Admin):** Người dùng gửi báo cáo lừa đảo kèm chứng cứ (`/reports/new`), Admin quản lý kiểm duyệt báo cáo (`/admin/moderation`) với cơ chế optimistic locking chống conflict, tự động xuất bản cảnh báo công khai (`/warnings`) có che giấu thông tin cá nhân (PII Redaction).
+- **R5 (AI Giải thích tùy chọn):** Trợ lý AI giải thích (Gemini 2.5 Flash) tuân thủ nghiêm ngặt nguyên tắc **Rule Supremacy** (không ghi đè điểm rủi ro của deterministic engine) và **AI Consent** (chỉ kích hoạt khi người dùng đồng ý).
+- **R6 (Kiểm thử hồi quy, Diễn tập khôi phục & Vận hành):** kiểm thử local đã qua; release/deployment acceptance vẫn cần xác nhận với môi trường đích.
+
+### Kết quả xác minh local
+
+- **Backend:** 456 passed, 3 skipped (OCR CI-only), 14 warnings; gồm các bài PostgreSQL và archive restore. Từ `backend/`, `POSTGRES_TEST_URL` trỏ tới DB PostgreSQL 17 local dùng một lần, `RUN_RESTORE_DRILL_PG_TEST=1 .venv/bin/python -m pytest -q --tb=short` hoàn tất trong 23.72s.
+- **Frontend:** Vitest 73/73; `npm run lint` và `npm run typecheck` đều exit 0.
+- **E2E:** Playwright 25/25 với OCR thật, backend hiện tại và DB tổng hợp cô lập: `PLAYWRIGHT_PORT=3100 API_PROXY_TARGET=http://127.0.0.1:8002 npm run test:e2e` (từ `frontend/`).
+- **Load:** 10 requests, 5 workers, 10,000 ký tự; 10/10 thành công cho analysis và lookup, 0% lỗi, 14 acceptance checks pass. Analysis p50/p95 0.0899/0.0950s; lookup p50/p95 0.0235/0.0328s. Rate limit cũng trả 10 lần HTTP 201 rồi HTTP 429 với `Retry-After: 60s`.
+- **Smoke:** local `http://127.0.0.1:8002` đạt 8/8 khi không truyền `--sha` (header là `dev`); một SHA sai cho 7/8 và exit 1. Lần local này không xác nhận commit deployment.
+- **Restore:** `pg_dump -Fc`/`pg_restore` qua test PostgreSQL local với dữ liệu tổng hợp, FK, RLS/policy và cleanup thành công; không chạy trên nguồn production.
+
+Tài liệu vận hành và nghiệm thu:
+- [Release Notes v1.0.0](docs/release-notes-v1.0.0.md)
+- [Báo cáo Nghiệm thu Phát hành R6](docs/r6-release-acceptance-report.md)
+- [Runbook Khôi phục Thảm họa & Rollback](docs/runbooks/disaster-recovery-and-restore.md)
+- [Đặc tả API v1.0.0](docs/api.md)
+- [Báo cáo Đo tải & Hiệu năng](docs/reports/r6-load-test-report.md)
+- [Báo cáo Kiểm tra sau Phát hành](docs/reports/r6-post-release-smoke-report.md)
+
+### Các lệnh kiểm thử & vận hành nhanh
+
+```sh
+# 1. Chạy hồi quy R6 (từ thư mục gốc repository)
+(cd backend && .venv/bin/python -m pytest tests/test_r6_regression.py -v)
+
+# 2. Chạy benchmark hiệu năng
+(cd backend && .venv/bin/python -m pytest tests/test_performance_benchmarks.py -v)
+
+# 3. Chạy load test CLI
+backend/.venv/bin/python scripts/load-test.py --target http://127.0.0.1:8000 --concurrency 5 --total-requests 10
+
+# 4. Diễn tập local với Docker container jobshield-test-pg (PostgreSQL 17)
+./scripts/restore-drill.sh
+
+# 5. Kiểm tra sức khỏe dịch vụ (Post-Release Smoke Test)
+python3 scripts/post-release-smoke.py --url http://127.0.0.1:8000
+```
+
+`restore-drill.sh` chỉ dùng PostgreSQL container local `jobshield-test-pg`; `SOURCE_DB` có thể chọn một database trong container. Lệnh này không nhắm tới database remote.
+
 ## Trạng thái triển khai local — 28/10/2026
 
 - `/analyze`: phân tích văn bản, lưu/đọc snapshot theo phiên khách; cảnh báo rủi ro độc lập với kết quả đối chiếu nguồn.
