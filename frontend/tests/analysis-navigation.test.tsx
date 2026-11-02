@@ -2,6 +2,7 @@ import React from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import AnalyzePage from "@/app/(public)/analyze/page";
+import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 const snapshot = {
   id: "old-result", risk_label_vi: "Ít dấu hiệu rủi ro", verification_label_vi: "Chưa xác minh", finding_vi: "Kết quả cũ.",
@@ -9,6 +10,22 @@ const snapshot = {
   indicators: [], evidence: { is_demo: false, matched_sources: [], missing_vi: [], limitations_vi: [] }, actions_vi: [], engine_version: "1.2.0", rules_version: "2026.10", created_at: "2026-10-26T00:00:00Z", expires_at: "2026-10-27T00:00:00Z",
 };
 afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); window.history.replaceState({}, "", "/"); });
+
+it("loads the current sample during navigation and replaces it when the query changes", () => {
+  const { rerender } = render(
+    <SearchParamsContext.Provider value={new URLSearchParams("sample=Tin+mẫu+đầu+tiên")}>
+      <AnalyzePage />
+    </SearchParamsContext.Provider>,
+  );
+  expect(screen.getByLabelText("Nội dung tin tuyển dụng cần phân tích")).toHaveValue("Tin mẫu đầu tiên");
+  fireEvent.change(screen.getByLabelText("Nội dung tin tuyển dụng cần phân tích"), { target: { value: "Đã chỉnh sửa" } });
+  rerender(
+    <SearchParamsContext.Provider value={new URLSearchParams("sample=Tin+mẫu+thứ+hai")}>
+      <AnalyzePage />
+    </SearchParamsContext.Provider>,
+  );
+  expect(screen.getByLabelText("Nội dung tin tuyển dụng cần phân tích")).toHaveValue("Tin mẫu thứ hai");
+});
 
 it("a late detail response cannot overwrite the form after browser Back", async () => {
   let resolve!: (response: Response) => void;

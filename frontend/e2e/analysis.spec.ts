@@ -50,7 +50,8 @@ test.describe("Trang phân tích tin tuyển dụng (/analyze)", () => {
 
     // 4. Kết quả phân tích hiển thị và URL cập nhật ?id=...
     await expect(page.getByText(/Mức độ: Ít dấu hiệu rủi ro/i)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Công ty Mẫu A (DEMO)")).toBeVisible();
+    const companyField = page.getByRole("definition").filter({ hasText: "Công ty Mẫu A (DEMO)" });
+    await expect(companyField).toBeVisible();
     await expect(page.getByText("Thực tập sinh kiểm thử")).toBeVisible();
 
     const url = new URL(page.url());
@@ -60,7 +61,7 @@ test.describe("Trang phân tích tin tuyển dụng (/analyze)", () => {
     // 5. Tải lại trang (Reload): kết quả vẫn hiển thị nhờ sessionStorage token và URL ?id=...
     await page.reload();
     expect(pageErrors).toEqual([]);
-    await expect(page.getByText("Công ty Mẫu A (DEMO)")).toBeVisible();
+    await expect(companyField).toBeVisible();
     await expect(page.getByText("Thực tập sinh kiểm thử")).toBeVisible();
 
     // 6. Trình duyệt Back: quay lại form nhập liệu, URL không còn ?id=...
@@ -71,7 +72,7 @@ test.describe("Trang phân tích tin tuyển dụng (/analyze)", () => {
 
     // 7. Trình duyệt Forward: quay lại kết quả phân tích
     await page.goForward();
-    await expect(page.getByText("Công ty Mẫu A (DEMO)")).toBeVisible();
+    await expect(companyField).toBeVisible();
     const fwdUrl = new URL(page.url());
     expect(fwdUrl.searchParams.get("id")).toBe(analysisId);
 
@@ -91,5 +92,8 @@ test.describe("Trang phân tích tin tuyển dụng (/analyze)", () => {
     await expect(guestBPage.getByText("Thực tập sinh kiểm thử")).not.toBeVisible();
 
     await guestBContext.close();
+
+    await page.getByRole("link", { name: /Xác minh nhà tuyển dụng này/ }).click();
+    await expect(page.getByLabel("Tên công ty")).toHaveValue("Công ty Mẫu A (DEMO)");
   });
 });

@@ -26,7 +26,7 @@ test.describe("Xác thực và Quản lý dữ liệu cá nhân (R2)", () => {
 
       // Keep AuthProvider mounted, just as when following links in the real guest journey.
       await page.getByRole("link", { name: "Trang chủ", exact: true }).click();
-      await page.getByRole("link", { name: "Đăng nhập tài khoản", exact: true }).click();
+      await page.getByRole("banner").getByRole("link", { name: "Đăng nhập", exact: true }).click();
       if (mode === "register") await page.getByRole("link", { name: "Đăng ký ngay", exact: true }).click();
       if (mode === "register") await page.getByLabel("Họ và tên").fill(initialName);
       await page.getByLabel("Email").fill(email);
@@ -37,7 +37,7 @@ test.describe("Xác thực và Quản lý dữ liệu cá nhân (R2)", () => {
       await expect(page).toHaveURL(new RegExp(`/${mode}$`));
       await page.getByRole("button", { name: "Nhận vào tài khoản" }).click();
       await expect(page).toHaveURL(/\/dashboard/);
-      await page.getByRole("link", { name: "Lịch sử phân tích", exact: true }).click();
+      await page.getByRole("banner").getByRole("link", { name: "Lịch sử", exact: true }).click();
       await expect(page.locator(`a[href="/analyze?id=${analysisId}"]`)).toBeVisible();
       await page.reload();
       await page.locator(`a[href="/analyze?id=${analysisId}"]`).click();
@@ -109,7 +109,7 @@ test.describe("Xác thực và Quản lý dữ liệu cá nhân (R2)", () => {
     await expect(page.getByText(/Kết quả được lưu trong tài khoản của bạn/i)).toBeVisible();
 
     await page.goto("/dashboard");
-    await expect(page.getByText("Ít dấu hiệu rủi ro", { exact: true }).first().locator("..")).toContainText("1");
+    await expect(page.getByText("1 (100%)").locator("..")).toContainText("Ít dấu hiệu rủi ro");
 
     // 5. Kiểm tra Lịch sử phân tích
     await page.goto("/history");

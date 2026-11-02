@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { ShieldCheck, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const { user, loading, login, hasGuestSession, claimGuest, dismissGuestClaim } = useAuth();
@@ -43,39 +44,46 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto max-w-md px-6 py-16">
+    <main className="mx-auto max-w-md px-4 py-12 sm:px-6 sm:py-16">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 text-white shadow-md shadow-sky-600/20">
+          <ShieldCheck className="size-6" />
+        </div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl dark:text-white">
           Đăng nhập JobShield
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           Quản lý lịch sử phân tích, lưu trữ cảnh báo và bảo vệ thông tin ứng tuyển.
         </p>
       </div>
 
       {showClaimPrompt ? (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 shadow-sm text-left space-y-4">
-          <h2 className="text-lg font-semibold text-blue-900">
-            Tìm thấy kết quả phân tích phiên khách
-          </h2>
-          <p className="text-sm text-blue-800">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-6 shadow-sm text-left space-y-4 dark:border-sky-900/50 dark:bg-sky-950/40">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-5 text-sky-600" />
+            <h2 className="text-base font-bold text-sky-950 dark:text-sky-200">
+              Tìm thấy kết quả phân tích phiên khách
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm leading-relaxed text-sky-900 dark:text-sky-300">
             Bạn có kết quả phân tích trong phiên làm việc vừa rồi. Bạn có muốn lưu các kết quả này vào tài khoản của mình không?
           </p>
           {claimMessage ? (
-            <p className="text-sm font-medium text-emerald-800">{claimMessage}</p>
+            <p className="text-xs sm:text-sm font-semibold text-emerald-800 dark:text-emerald-300">{claimMessage}</p>
           ) : (
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
                 onClick={handleClaim}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs"
               >
                 Nhận vào tài khoản
               </Button>
               <Button
                 type="button"
                 onClick={handleSkipClaim}
-                className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                variant="outline"
+                className="text-xs font-medium"
               >
                 Bỏ qua
               </Button>
@@ -83,13 +91,13 @@ export default function LoginPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white p-8 border border-slate-200 rounded-xl shadow-sm">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <AuthForm mode="login" onSubmit={handleLoginSubmit} />
-          <p className="mt-6 text-center text-sm text-slate-600">
+          <p className="mt-6 text-center text-xs text-slate-600 dark:text-slate-400">
             Chưa có tài khoản?{" "}
             <Link
               href="/register"
-              className="font-medium text-slate-900 hover:underline"
+              className="font-semibold text-sky-600 hover:underline dark:text-sky-400"
             >
               Đăng ký ngay
             </Link>
