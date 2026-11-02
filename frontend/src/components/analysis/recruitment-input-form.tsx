@@ -23,6 +23,7 @@ export interface AnalysisOptions {
 
 interface RecruitmentInputFormProps {
   onSubmit: (text: string, options?: AnalysisOptions) => Promise<void>;
+  initialText?: string;
   isLoading?: boolean;
   error?: string | null;
   onResetSession?: () => void;
@@ -49,19 +50,14 @@ const SAMPLE_JOB_POSTS = [
 
 export function RecruitmentInputForm({
   onSubmit,
+  initialText = "",
   isLoading = false,
   error = null,
   onResetSession,
   isSessionInvalid = false,
 }: RecruitmentInputFormProps) {
   const [mode, setMode] = useState<InputMode>("text");
-  const [text, setText] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("sample") || "";
-    }
-    return "";
-  });
+  const [text, setText] = useState(initialText);
   const [url, setUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);

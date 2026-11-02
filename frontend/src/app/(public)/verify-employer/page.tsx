@@ -1,13 +1,24 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { VerificationForm } from "@/components/employers/verification-form";
 import { VerificationResults } from "@/components/employers/verification-results";
 import { createVerification } from "@/lib/api-client";
 import { VerificationCreate, VerificationResponse } from "@/types/api";
 
 export default function VerifyEmployerPage() {
+  return <Suspense fallback={<p role="status" className="p-6 text-center">Đang tải...</p>}><VerificationQuery /></Suspense>;
+}
+
+function VerificationQuery() {
+  const company = useSearchParams()?.get("company") || "";
+  return <VerificationPage key={company} company={company} />;
+}
+
+function VerificationPage({ company }: { company: string }) {
+  const [initialCompany, setInitialCompany] = useState(company);
   const [result, setResult] = useState<VerificationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +43,7 @@ export default function VerifyEmployerPage() {
   const reset = () => {
     setResult(null);
     setError(null);
+    setInitialCompany("");
     heading.current?.focus();
   };
   return <main className="mx-auto max-w-4xl px-4 py-8 text-slate-900 dark:text-slate-100 sm:px-6">
@@ -47,7 +59,7 @@ export default function VerifyEmployerPage() {
       <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">Đối chiếu thông tin doanh nghiệp và kênh liên hệ với nguồn có căn cứ. Xem rõ phần đã khớp, phần chưa kiểm tra được và việc cần xác minh thêm.</p>
     </header>
     <div aria-busy={loading} className="rounded-2xl border border-slate-200/90 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/90 sm:p-8 shadow-sm">
-      {result ? <VerificationResults result={result} onReset={reset} /> : <VerificationForm onSubmit={submit} isLoading={loading} error={error} />}
+      {result ? <VerificationResults result={result} onReset={reset} /> : <VerificationForm initialCompany={initialCompany} onSubmit={submit} isLoading={loading} error={error} />}
     </div>
   </main>;
 }

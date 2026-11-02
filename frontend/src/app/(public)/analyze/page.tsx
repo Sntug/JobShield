@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AnalysisResponse } from "@/types/api";
 import {
   AUTH_CHANGED_EVENT,
@@ -15,6 +16,11 @@ import { RecruitmentInputForm } from "@/components/analysis/recruitment-input-fo
 import { AnalysisResults } from "@/components/analysis/analysis-results";
 
 export default function AnalyzePage() {
+  return <Suspense fallback={<p role="status" className="p-6 text-center">Đang tải...</p>}><AnalysisPageContent /></Suspense>;
+}
+
+function AnalysisPageContent() {
+  const sample = useSearchParams()?.get("sample") || "";
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSessionInvalid, setIsSessionInvalid] = useState(false);
@@ -152,6 +158,8 @@ export default function AnalyzePage() {
           <AnalysisResults analysis={analysis} onReset={handleReset} />
         ) : (
           <RecruitmentInputForm
+            key={sample}
+            initialText={sample}
             onSubmit={handleAnalyze}
             isLoading={isLoading}
             error={error}

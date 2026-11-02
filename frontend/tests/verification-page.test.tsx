@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import VerifyEmployerPage from "@/app/(public)/verify-employer/page";
 import { createVerification } from "@/lib/api-client";
+import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 const response = {
   request_id: "page-test", verification_label_vi: "Chưa xác minh", summary_vi: "Chưa có nguồn đối chiếu.", findings_vi: [], field_checks: [], matched_sources: [], missing_fields_vi: [],
@@ -11,6 +12,19 @@ const response = {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("Verification page and client", () => {
+  it("prefills the company from the analysis link and clears it on reset", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(response))));
+    render(
+      <SearchParamsContext.Provider value={new URLSearchParams("company=Công+ty+Mẫu")}>
+        <VerifyEmployerPage />
+      </SearchParamsContext.Provider>,
+    );
+    expect(screen.getByLabelText("Tên công ty")).toHaveValue("Công ty Mẫu");
+    fireEvent.click(screen.getByRole("button", { name: "Đối chiếu thông tin" }));
+    await screen.findByRole("heading", { name: "Chưa xác minh" });
+    fireEvent.click(screen.getByRole("button", { name: "Kiểm tra thông tin khác" }));
+    expect(screen.getByLabelText("Tên công ty")).toHaveValue("");
+  });
   it("sends only explicit fields in JSON without guest token or persistent storage", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(response)));
     vi.stubGlobal("fetch", fetcher);

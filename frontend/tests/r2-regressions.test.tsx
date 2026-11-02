@@ -31,7 +31,7 @@ it('temporary getMe 503 does not destroy the active authentication token',async(
 });
 it('counts the low-risk label actually emitted by the backend',()=>{
   render(<RiskStatistics stats={{total_analyses:1,saved_analyses:0,risk_distribution:{'Ít dấu hiệu rủi ro':1}}}/>);
-  expect(screen.getAllByText('1')).toHaveLength(3);
+  expect(screen.getByText('1 (100%)').parentElement).toHaveTextContent('Ít dấu hiệu rủi ro');
 });
 
 function RaceHarness(){const auth=useAuthContext();return <><output data-testid="race-user">{auth.user?.email || 'signed out'}</output><button onClick={()=>void auth.refreshUser()}>Refresh profile</button><button onClick={()=>void auth.logout()}>Logout</button></>;}

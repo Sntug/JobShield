@@ -23,16 +23,18 @@ const bankFields = [
 
 export function VerificationForm({
   onSubmit,
+  initialCompany = "",
   isLoading = false,
   error = null,
 }: {
   onSubmit: (payload: VerificationCreate) => Promise<void>;
+  initialCompany?: string;
   isLoading?: boolean;
   error?: string | null;
 }) {
   const { register, handleSubmit, setValue, formState: { isSubmitting } } = useForm<VerificationFormValues>({
     defaultValues: {
-      company_name: "",
+      company_name: initialCompany,
       tax_id: "",
       contact_email: "",
       recruitment_website: "",

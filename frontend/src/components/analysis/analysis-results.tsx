@@ -70,8 +70,9 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
     : null;
 
   const handleCopySummary = async () => {
-    const summaryText = `[Cảnh báo an toàn JobShield]\n• Mức độ rủi ro: ${risk_label_vi}\n• Xác minh pháp nhân: ${verification_label_vi}\n• Kết luận: ${finding_vi}\n${
-      analysis.risk_score != null ? `• Điểm chỉ dấu: ${analysis.risk_score}/100\n` : ""
+    const isDemo = evidence.is_demo || evidence.matched_sources?.some((source) => source.is_demo);
+    const summaryText = `[Cảnh báo an toàn JobShield]\n${isDemo ? "• Dữ liệu DEMO — chỉ dùng minh họa.\n" : ""}• Mức độ rủi ro: ${risk_label_vi}\n• Xác minh pháp nhân: ${verification_label_vi}\n• Kết luận: ${finding_vi}\n${
+      analysis.risk_score != null ? `• Điểm chỉ dấu: ${analysis.risk_score}/100. Đây là tổng trọng số của các rule đã kích hoạt, không phải xác suất lừa đảo.\n` : ""
     }${
       indicators.length > 0
         ? `• Dấu hiệu phát hiện:\n${indicators
@@ -82,7 +83,7 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
       actions_vi.length > 0
         ? `• Khuyến nghị hành động:\n${actions_vi.map((a) => `  - ${a}`).join("\n")}\n`
         : ""
-    }Nguồn kiểm tra: JobShield - Hệ thống phân tích tin tuyển dụng`;
+    }${(evidence.limitations_vi || []).map((limit) => `• Giới hạn: ${limit}\n`).join("")}Khớp nguồn không bảo đảm tin tuyển dụng thật hoặc an toàn.\nNguồn kiểm tra: JobShield - Hệ thống phân tích tin tuyển dụng`;
 
     try {
       await navigator.clipboard.writeText(summaryText);

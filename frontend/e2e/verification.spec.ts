@@ -29,7 +29,7 @@ test("đối chiếu thật, provenance, reset và dữ liệu ngân hàng khôn
   await expect(page.getByText(/Phiên bản nguồn: 1/)).toBeVisible();
   await expect(page.getByRole("link", { name: /Mở nguồn:/ })).toHaveAttribute("href", "https://company-1.example/about");
   await expect(page.getByText(/Khớp nguồn không xác nhận tin tuyển dụng thật, an toàn hoặc nên chuyển tiền/)).toBeVisible();
-  await page.getByRole("button", { name: "Kiểm tra thông tin khác" }).click();
+  await page.getByRole("button", { name: "Kiểm tra thông tin khác", exact: true }).click();
   await expect(page.getByLabel("Mã số thuế")).toHaveValue("");
   await page.getByText("Tài khoản ngân hàng (tùy chọn)", { exact: true }).click();
   await page.getByLabel("Ngân hàng", { exact: true }).fill("Bank E2E");
@@ -50,11 +50,11 @@ test("khớp một phần, trùng tên và hai định danh xung đột không t
   await page.getByLabel("Website tuyển dụng").fill("https://unlisted.example/jobs");
   await page.getByRole("button", { name: "Đối chiếu thông tin" }).click();
   await expect(page.getByRole("heading", { name: "Chưa xác minh", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Kiểm tra thông tin khác" }).click();
+  await page.getByRole("button", { name: "Kiểm tra thông tin khác", exact: true }).click();
   await page.getByLabel("Email liên hệ").fill("shared@e2e.example");
   await page.getByRole("button", { name: "Đối chiếu thông tin" }).click();
   await expect(page.getByRole("heading", { name: "Không đủ dữ liệu", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Kiểm tra thông tin khác" }).click();
+  await page.getByRole("button", { name: "Kiểm tra thông tin khác", exact: true }).click();
   await page.getByLabel("Mã số thuế").fill("0000000401");
   await page.getByLabel("Website tuyển dụng").fill("https://company-2.example/jobs");
   await page.getByRole("button", { name: "Đối chiếu thông tin" }).click();

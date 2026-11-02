@@ -43,6 +43,27 @@ const mockAnalysis: AnalysisResponse = {
 };
 
 describe("AnalysisResults", () => {
+  it.each([true, false])("keeps demo provenance and score limitations in copied summaries (analysis demo: %s)", async (analysisDemo) => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    try {
+      render(<AnalysisResults analysis={{ ...mockAnalysis, risk_score: 0, evidence: {
+        ...mockAnalysis.evidence,
+        is_demo: analysisDemo,
+        matched_sources: analysisDemo ? [] : [{ id: "demo-source", label_vi: "Nguồn mẫu", is_demo: true }],
+      } }} onReset={vi.fn()} />);
+      fireEvent.click(screen.getByRole("button", { name: "Sao chép tóm tắt" }));
+      expect(writeText).toHaveBeenCalledOnce();
+      const copied = writeText.mock.calls[0][0];
+      expect(copied).toContain("DEMO");
+      expect(copied).toContain("0/100");
+      expect(copied).toContain("không phải xác suất lừa đảo");
+      expect(copied).toContain("Khớp nguồn không bảo đảm tin tuyển dụng thật hoặc an toàn");
+      await screen.findByText("Đã sao chép!");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("explains that no indicators do not establish safety", () => {
     render(<AnalysisResults analysis={{ ...mockAnalysis, indicators: [], risk_label_vi: "Không đủ thông tin" }} onReset={vi.fn()} />);
     expect(screen.getByText(/Chưa phát hiện dấu hiệu cảnh báo trong văn bản/i)).toBeInTheDocument();
@@ -76,7 +97,7 @@ describe("AnalysisResults", () => {
     expect(quotes.length).toBeGreaterThanOrEqual(1);
 
     // 11 fields
-    expect(screen.getByText("Công ty Mẫu Thu Phí")).toBeInTheDocument();
+    expect(screen.getByText("Tên doanh nghiệp").parentElement).toHaveTextContent("Công ty Mẫu Thu Phí");
     expect(screen.getByText("Nhân viên nhập liệu")).toBeInTheDocument();
     expect(screen.getByText("8 triệu đồng/tháng")).toBeInTheDocument();
 
