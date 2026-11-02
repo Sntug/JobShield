@@ -77,7 +77,7 @@ def run_restore_drill(tmp_path, *, fail_restore=False):
         "  *' pg_dump '*)\n"
         "    artifact=$(find \"$TMPDIR\" -maxdepth 1 -name 'jobshield_drill.*' -print -quit)\n"
         "    test -n \"$artifact\" || exit 31\n"
-        "    mode=$(stat -f '%Lp' \"$artifact\" 2>/dev/null || stat -c '%a' \"$artifact\")\n"
+        "    mode=$(stat -c '%a' \"$artifact\" 2>/dev/null || stat -f '%Lp' \"$artifact\")\n"
         "    printf '%s' \"$mode\" > \"$MODE_LOG\"\n"
         "    printf 'synthetic archive'\n"
         "    ;;\n"
