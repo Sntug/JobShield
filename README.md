@@ -72,9 +72,11 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 Frontend (từ `frontend/`, `NEXT_PUBLIC_API_BASE_URL` trỏ backend tương ứng):
 
 ```sh
-npm ci --include=optional
+npm ci --include=dev --include=optional
 npm run dev
 ```
+
+Khi chạy `npm run build`, bước cài đặt cũng cần `--include=dev` để Tailwind nạp `shadcn/tailwind.css`.
 
 OCR local cần `tesseract` trong `PATH` và dữ liệu ngôn ngữ `vie`, `eng`; Dockerfile backend đã cài đủ. Nếu thiếu engine hoặc ảnh không đọc được, giao diện cho dán văn bản thủ công. Ảnh tối đa 5 MiB và 16 triệu pixel; kiểm tra chữ ký, cấu trúc ảnh và MIME trước OCR. Không lấy chữ từ metadata hoặc fixture DEMO.
 
