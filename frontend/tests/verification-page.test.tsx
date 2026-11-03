@@ -47,7 +47,7 @@ describe("Verification page and client", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Kho nguồn tạm thời không khả dụng.");
     expect(screen.getByLabelText("Mã số thuế")).toHaveValue("0000000001");
     fireEvent.click(screen.getByRole("button", { name: "Đối chiếu thông tin" }));
-    expect(await screen.findByRole("heading", { name: "Chưa xác minh" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Chưa xác minh" })).toHaveFocus());
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra thông tin khác" }));
     await waitFor(() => expect(screen.getByLabelText("Mã số thuế")).toHaveValue(""));
   });
