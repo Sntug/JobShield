@@ -104,6 +104,7 @@ jobs:
     env:
       UV_PYTHON_DOWNLOADS: "manual"
       DATABASE_URL: "postgresql+psycopg://postgres:postgres_ci_password@localhost:5432/jobshield_ci_e2e"
+      JOBSHIELD_E2E_URL_FIXTURE: "1"
       API_PROXY_TARGET: "http://127.0.0.1:8000"
       GIT_COMMIT: ${{ github.sha }}
     steps:
@@ -156,7 +157,7 @@ jobs:
         working-directory: backend
         run: |
           # A long-lived uv run holds the cache lock and blocks setup-uv's post-job prune.
-          .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          .venv/bin/uvicorn tests.e2e_app:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
 
       - name: Wait for Backend Readiness
@@ -172,6 +173,10 @@ jobs:
             timeout=$((timeout - 1))
           done
           echo "Backend đã kết nối DB và sẵn sàng nhận request."
+
+      - name: Verify isolated URL extraction fixture
+        run: |
+          curl --fail --silent http://127.0.0.1:8000/api/v1/__e2e__/url-fixture | python -c 'import json, sys; assert json.load(sys.stdin) == {"ready": True, "kind": "mock-transport"}'
 
       - name: Run Playwright E2E Tests
         working-directory: frontend
