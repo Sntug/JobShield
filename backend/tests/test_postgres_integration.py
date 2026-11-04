@@ -9,10 +9,13 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
 from alembic.config import Config
@@ -21,7 +24,10 @@ from app.core.security import generate_guest_token, hash_guest_token
 from app.db.session import get_db
 from app.main import app
 from app.models.analyses import Analysis
+from app.models.batch_analyses import BatchAnalysis, BatchAnalysisItem
 from app.models.guest_sessions import GuestSession
+from app.schemas.batch_analyses import BatchAnalysisCreate, BatchItemInput
+from app.services.batch_analysis import cancel_batch, create_batch, process_batch_in_background
 from app.cli.cleanup import purge_expired_sessions
 
 EXPLICIT_TEST_URL = os.getenv("POSTGRES_TEST_URL")
@@ -274,3 +280,198 @@ def test_postgres_cleanup_cascade_purge(pg_db):
     # 5. Kiểm chứng: session còn hạn và analysis của nó được bảo toàn nguyên vẹn
     assert pg_db.query(GuestSession).filter_by(id=active_session_id).first() is not None
     assert pg_db.query(Analysis).filter_by(id=active_analysis_id).first() is not None
+
+
+def test_postgres_cancel_serializes_with_worker_item_claim(pg_db, postgres_engine, isolated_schema):
+    now = datetime.now(timezone.utc)
+    guest = GuestSession(
+        id=uuid.uuid4(),
+        token_hash=hash_guest_token(generate_guest_token()),
+        created_at=now,
+        expires_at=now + timedelta(hours=24),
+    )
+    pg_db.add(guest)
+    pg_db.commit()
+    batch = create_batch(
+        pg_db,
+        BatchAnalysisCreate(items=[BatchItemInput(type="text", value="Tuyển nhân viên hỗ trợ khách hàng")]),
+        session_id=guest.id,
+        expires_at=guest.expires_at,
+    )
+
+    worker_session_factory = sessionmaker(autocommit=False, autoflush=False, bind=postgres_engine)
+
+    def open_isolated_session(*, worker=False):
+        db = worker_session_factory()
+        db.execute(text(f'SET search_path TO "{isolated_schema}"'))
+        db.commit()
+        db.info["batch_worker_test"] = worker
+        return db
+
+    claim_paused = Event()
+    allow_claim_commit = Event()
+    analysis_waiting = Event()
+    allow_analysis = Event()
+    cancel_started = Event()
+    cancel_finished = Event()
+
+    def pause_before_claim_commit(session: Session):
+        if not session.info.get("batch_worker_test"):
+            return
+        if any(
+            isinstance(item, BatchAnalysisItem) and item.status == "processing"
+            for item in session.dirty
+        ):
+            session.info["batch_worker_test"] = False
+            claim_paused.set()
+            if not allow_claim_commit.wait(10):
+                raise TimeoutError("worker claim was not released")
+
+    def cancel_from_second_session():
+        cancel_started.set()
+        db = open_isolated_session()
+        try:
+            cancelled = cancel_batch(db, batch.id)
+            return cancelled.status, [item.status for item in cancelled.items]
+        finally:
+            db.close()
+            cancel_finished.set()
+
+    def pause_analysis(db, job):
+        analysis_waiting.set()
+        if not allow_analysis.wait(10):
+            raise TimeoutError("worker analysis was not released")
+        return []
+
+    event.listen(Session, "before_commit", pause_before_claim_commit)
+    try:
+        with patch(
+            "app.services.batch_analysis.get_session_local",
+            return_value=lambda: open_isolated_session(worker=True),
+        ), patch("app.services.batch_analysis.load_for_job", side_effect=pause_analysis):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                worker = pool.submit(process_batch_in_background, batch.id)
+                assert claim_paused.wait(5)
+                cancel = pool.submit(cancel_from_second_session)
+                assert cancel_started.wait(5)
+                assert not cancel_finished.wait(0.1)
+                allow_claim_commit.set()
+                assert analysis_waiting.wait(5)
+                assert cancel_finished.wait(5)
+                cancelled_status, cancelled_items = cancel.result(timeout=5)
+                assert cancelled_status == "cancelled"
+                assert cancelled_items == ["processing"]
+                allow_analysis.set()
+                worker.result(timeout=10)
+    finally:
+        allow_claim_commit.set()
+        allow_analysis.set()
+        event.remove(Session, "before_commit", pause_before_claim_commit)
+
+    pg_db.refresh(batch)
+    assert batch.status == "cancelled"
+    assert batch.items[0].status == "success"
+    assert batch.items[0].analysis_id is not None
+    assert batch.processed_items == 1
+
+
+def test_postgres_claim_guest_during_worker_uses_new_batch_owner(
+    pg_db, postgres_engine, isolated_schema
+):
+    now = datetime.now(timezone.utc)
+    guest_token = generate_guest_token()
+    guest = GuestSession(
+        id=uuid.uuid4(),
+        token_hash=hash_guest_token(guest_token),
+        created_at=now,
+        expires_at=now + timedelta(hours=24),
+    )
+    pg_db.add(guest)
+    pg_db.commit()
+    batch = create_batch(
+        pg_db,
+        BatchAnalysisCreate(
+            items=[BatchItemInput(type="text", value="Tuyển nhân viên hỗ trợ khách hàng")]
+        ),
+        session_id=guest.id,
+        expires_at=guest.expires_at,
+    )
+
+    worker_session_factory = sessionmaker(autocommit=False, autoflush=False, bind=postgres_engine)
+
+    def open_isolated_session():
+        db = worker_session_factory()
+        db.execute(text(f'SET search_path TO "{isolated_schema}"'))
+        db.commit()
+        return db
+
+    result_ready = Event()
+    allow_result_commit = Event()
+
+    from app.services import batch_analysis
+
+    finish_item = batch_analysis._finish_item
+
+    def pause_before_result_commit(db, batch_id, item_id, **kwargs):
+        result_ready.set()
+        if not allow_result_commit.wait(10):
+            raise TimeoutError("worker result was not released")
+        return finish_item(db, batch_id, item_id, **kwargs)
+
+    try:
+        with patch(
+            "app.services.batch_analysis.get_session_local",
+            return_value=open_isolated_session,
+        ), patch("app.services.batch_analysis._finish_item", side_effect=pause_before_result_commit):
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                worker = pool.submit(process_batch_in_background, batch.id)
+                assert result_ready.wait(5)
+                with TestClient(app) as client:
+                    registration = client.post(
+                        "/api/v1/auth/register",
+                        json={
+                            "email": f"batch-claim-{uuid.uuid4().hex[:8]}@example.com",
+                            "password": "secure_password_15_chars",
+                            "full_name": "Batch Claim Test",
+                        },
+                    )
+                    assert registration.status_code == 201
+                    user_token = registration.json()["access_token"]
+                    user_id = uuid.UUID(registration.json()["user"]["id"])
+                    user_headers = {"Authorization": f"Bearer {user_token}"}
+
+                    claim = client.post(
+                        "/api/v1/auth/claim-guest",
+                        headers=user_headers,
+                        json={"guest_session_token": guest_token},
+                    )
+                    assert claim.status_code == 200
+                    assert claim.json()["claimed_count"] == 0
+
+                    allow_result_commit.set()
+                    worker.result(timeout=10)
+
+                    guest_read = client.get(
+                        f"/api/v1/batches/analyses/{batch.id}",
+                        headers={"X-Guest-Session-Token": guest_token},
+                    )
+                    user_read = client.get(
+                        f"/api/v1/batches/analyses/{batch.id}", headers=user_headers
+                    )
+                    assert guest_read.status_code == 403
+                    assert user_read.status_code == 200
+    finally:
+        allow_result_commit.set()
+
+    pg_db.refresh(batch)
+    assert batch.status == "completed"
+    assert batch.user_id == user_id
+    assert batch.session_id is None
+    assert batch.expires_at is None
+    assert batch.items[0].status == "success"
+    assert batch.items[0].analysis_id is not None
+    analysis = pg_db.get(Analysis, batch.items[0].analysis_id)
+    assert analysis.user_id == user_id
+    assert analysis.session_id is None
+    assert analysis.expires_at is None
+    assert pg_db.get(GuestSession, guest.id) is None

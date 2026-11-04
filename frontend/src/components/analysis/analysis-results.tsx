@@ -21,9 +21,14 @@ import {
 interface AnalysisResultsProps {
   analysis: AnalysisResponse;
   onReset: () => void;
+  resetLabel?: string;
 }
 
-export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
+export function AnalysisResults({
+  analysis,
+  onReset,
+  resetLabel = "Phân tích tin khác",
+}: AnalysisResultsProps) {
   const {
     risk_label_vi,
     verification_label_vi,
@@ -165,7 +170,7 @@ export function AnalysisResults({ analysis, onReset }: AnalysisResultsProps) {
               onClick={onReset}
               className="text-xs text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-950/50 font-medium"
             >
-              ← Phân tích tin khác
+              ← {resetLabel}
             </Button>
           </div>
         </div>

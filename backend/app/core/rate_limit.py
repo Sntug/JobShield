@@ -7,7 +7,7 @@ dùng OrderedDict giới hạn cứng số lượng IP để chống tràn bộ 
 from collections import OrderedDict
 import threading
 import time
-from typing import List
+from typing import List, Optional
 from fastapi import HTTPException, Request, status
 
 # ponytail: in-memory rate limiter per worker process; trần thiết kế là đa tiến trình cần Redis/centralized store.
@@ -29,24 +29,30 @@ def get_client_ip(request: Request) -> str:
     return "127.0.0.1"
 
 
-def check_rate_limit(request: Request, bucket: str = "analyses") -> None:
-    """Kiểm tra giới hạn tần suất request (10 requests / 60 giây / IP).
+def check_rate_limit(
+    request: Request,
+    bucket: str = "analyses",
+    *,
+    identity: Optional[str] = None,
+    max_requests: int = MAX_REQUESTS_PER_WINDOW,
+) -> None:
+    """Kiểm tra giới hạn tần suất request theo bucket và IP hoặc identity.
 
     Thread-safe, dùng monotonic clock và cap cứng LRU tối đa MAX_TRACKED_IPS.
     """
-    ip = f"{bucket}:{get_client_ip(request)}"
+    key = f"{bucket}:{identity or get_client_ip(request)}"
     now = time.monotonic()
     window_start = now - WINDOW_SECONDS
 
     with _lock:
-        history = _request_history.get(ip, [])
+        history = _request_history.get(key, [])
         # Lọc bỏ các timestamp quá hạn
         history = [ts for ts in history if ts > window_start]
 
-        if len(history) >= MAX_REQUESTS_PER_WINDOW:
+        if len(history) >= max_requests:
             retry_after = int(WINDOW_SECONDS - (now - history[0])) + 1
-            _request_history[ip] = history
-            _request_history.move_to_end(ip)
+            _request_history[key] = history
+            _request_history.move_to_end(key)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Quá giới hạn tần suất yêu cầu. Vui lòng thử lại sau.",
@@ -54,8 +60,8 @@ def check_rate_limit(request: Request, bucket: str = "analyses") -> None:
             )
 
         history.append(now)
-        _request_history[ip] = history
-        _request_history.move_to_end(ip)
+        _request_history[key] = history
+        _request_history.move_to_end(key)
 
         # Áp dụng cap cứng tuyệt đối (LRU eviction) ngăn chặn flood IP làm tràn RAM
         while len(_request_history) > MAX_TRACKED_IPS:

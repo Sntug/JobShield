@@ -376,3 +376,41 @@ export interface PublicWarningSupersede {
 export interface PublicWarningWithdraw {
   withdrawal_reason_vi: string;
 }
+
+export type BatchStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
+export type BatchItemStatus = "pending" | "processing" | "success" | "error" | "cancelled";
+export type BatchItemInputType = "url" | "text";
+
+export interface BatchItemInput {
+  type: BatchItemInputType;
+  value: string;
+}
+
+export interface BatchAnalysisCreate {
+  items: BatchItemInput[];
+  use_ai?: boolean;
+  ai_consent?: boolean;
+}
+
+export interface BatchItemResponse {
+  id: string;
+  item_order: number;
+  input_type: BatchItemInputType;
+  input_value: string;
+  status: BatchItemStatus;
+  analysis_id?: string | null;
+  analysis?: AnalysisResponse | null;
+  error_message?: string | null;
+  error_code?: string | null;
+}
+
+export interface BatchAnalysisResponse {
+  id: string;
+  status: BatchStatus;
+  total_items: number;
+  processed_items: number;
+  items: BatchItemResponse[];
+  created_at: string;
+  updated_at?: string;
+  expires_at?: string | null;
+}

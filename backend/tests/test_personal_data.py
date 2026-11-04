@@ -15,6 +15,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.analyses import Analysis
+from app.models.batch_analyses import BatchAnalysis
 from app.models.guest_sessions import GuestSession
 from app.models.saved_analyses import SavedAnalysis
 from app.models.users import AccessSession, Role, User
@@ -212,6 +213,83 @@ def test_claim_guest_analyses_flow(client: TestClient, db_session):
         headers={"X-Guest-Session-Token": guest_token},
     )
     assert res_guest_read.status_code == 404
+
+
+def test_claim_guest_transfers_batch_and_linked_analysis(client: TestClient, db_session):
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "app.api.routes.batch_analyses.process_batch_in_background", lambda *args: None
+        )
+        batch_res = client.post(
+            "/api/v1/batches/analyses",
+            json={"items": [{"type": "text", "value": "Tuyển dụng nhân viên hỗ trợ khách hàng"}]},
+        )
+
+    assert batch_res.status_code == 201
+    guest_token = batch_res.headers["X-Guest-Session-Token"]
+    batch_id = uuid.UUID(batch_res.json()["id"])
+    analysis_res = client.post(
+        "/api/v1/analyses",
+        headers={"X-Guest-Session-Token": guest_token},
+        json={"text": "Tuyển dụng nhân viên hỗ trợ khách hàng"},
+    )
+    analysis_id = uuid.UUID(analysis_res.json()["id"])
+
+    batch = db_session.query(BatchAnalysis).filter_by(id=batch_id).first()
+    batch.items[0].analysis_id = analysis_id
+    batch.items[0].status = "success"
+    batch.status = "completed"
+    batch.processed_items = 1
+    db_session.commit()
+
+    user_token = register_user(client, "batch-claimer@example.com")
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+    claim_res = client.post(
+        "/api/v1/auth/claim-guest",
+        headers=user_headers,
+        json={"guest_session_token": guest_token},
+    )
+
+    assert claim_res.status_code == 200
+    assert claim_res.json()["claimed_ids"] == [str(analysis_id)]
+    db_session.refresh(batch)
+    assert batch.session_id is None
+    assert batch.user_id is not None
+    assert batch.expires_at is None
+    assert batch.items[0].analysis_id == analysis_id
+    assert db_session.get(Analysis, analysis_id).user_id == batch.user_id
+    assert client.get(f"/api/v1/batches/analyses/{batch_id}", headers=user_headers).status_code == 200
+
+
+def test_polling_stale_batch_marks_unfinished_items_failed(client: TestClient, db_session):
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "app.api.routes.batch_analyses.process_batch_in_background", lambda *args: None
+        )
+        response = client.post(
+            "/api/v1/batches/analyses",
+            json={"items": [{"type": "text", "value": "Tin tuyển dụng chưa xử lý"}]},
+        )
+    assert response.status_code == 201
+    guest_token = response.headers["X-Guest-Session-Token"]
+    batch_id = uuid.UUID(response.json()["id"])
+    batch = db_session.get(BatchAnalysis, batch_id)
+    batch.updated_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    db_session.commit()
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "app.services.batch_analysis._worker_stale_after", lambda: timedelta(minutes=1)
+        )
+        polled = client.get(
+            f"/api/v1/batches/analyses/{batch_id}",
+            headers={"X-Guest-Session-Token": guest_token},
+        )
+
+    assert polled.status_code == 200
+    assert polled.json()["status"] == "failed"
+    assert polled.json()["items"][0]["status"] == "error"
+    assert polled.json()["items"][0]["error_code"] == "WORKER_INTERRUPTED"
 
 
 def test_cleanup_does_not_purge_claimed_analyses(client: TestClient, db_session):

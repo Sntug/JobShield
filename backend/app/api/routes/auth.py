@@ -17,6 +17,7 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models.analyses import Analysis
+from app.models.batch_analyses import BatchAnalysis
 from app.models.guest_sessions import GuestSession
 from app.models.users import AccessSession, Role, User
 from app.schemas.auth import (
@@ -221,6 +222,12 @@ def claim_guest(
         .filter(Analysis.session_id == guest_session.id, Analysis.expires_at > now)
         .all()
     )
+    batches = (
+        db.query(BatchAnalysis)
+        .filter(BatchAnalysis.session_id == guest_session.id, BatchAnalysis.expires_at > now)
+        .with_for_update()
+        .all()
+    )
 
     claimed_ids = []
     for a in analyses:
@@ -228,6 +235,12 @@ def claim_guest(
         a.session_id = None
         a.expires_at = None
         claimed_ids.append(a.id)
+
+    for batch in batches:
+        batch.user_id = current_user.id
+        batch.session_id = None
+        batch.expires_at = None
+        batch.session = None
 
     # Xóa phiên khách để chống replay
     db.delete(guest_session)

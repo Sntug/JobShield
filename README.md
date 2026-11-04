@@ -60,3 +60,26 @@ A fresh database has no employer sources. To populate it for local development, 
 | [Frontend](frontend/) | Next.js App Router, React, TypeScript, and Tailwind CSS power the guest, account, and admin interfaces. |
 | [Backend](backend/) | FastAPI and Pydantic power the `/api/v1` endpoints for extraction, risk scoring, employer lookup, and reporting. Tesseract extracts text from images. |
 | [Database migrations](backend/alembic/) | Alembic manages the PostgreSQL schema. The backend accesses the database through SQLAlchemy. |
+
+## Batch E2E
+
+Use a disposable PostgreSQL database on loopback with a name starting `jobshield_r12_e2e_`. Set `JOBSHIELD_E2E_DATABASE_URL` explicitly; do not use `.env`, a shared database, or production.
+
+In terminal 1, from the repository root, set the URI for your local test database, then migrate, seed, and start the test-only API entrypoint:
+
+```sh
+cd backend
+export JOBSHIELD_E2E_DATABASE_URL='postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/jobshield_r12_e2e_local'
+DATABASE_URL="$JOBSHIELD_E2E_DATABASE_URL" .venv/bin/alembic upgrade head
+DATABASE_URL="$JOBSHIELD_E2E_DATABASE_URL" .venv/bin/python -m tests.seed_r12_e2e
+DATABASE_URL="$JOBSHIELD_E2E_DATABASE_URL" JOBSHIELD_E2E_URL_FIXTURE=1 .venv/bin/uvicorn tests.e2e_app:app --host 127.0.0.1 --port 8000
+```
+
+In terminal 2, run Playwright from `frontend/`:
+
+```sh
+cd frontend
+API_PROXY_TARGET=http://127.0.0.1:8000 npm run test:e2e
+```
+
+`tests.e2e_app` checks that the configured database is named and local, and enables the test URL fixture for E2E requests.

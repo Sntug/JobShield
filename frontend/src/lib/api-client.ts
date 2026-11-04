@@ -2,6 +2,8 @@ import {
   AdminStats,
   AnalysisListResponse,
   AnalysisResponse,
+  BatchAnalysisCreate,
+  BatchAnalysisResponse,
   ClaimGuestResponse,
   EmployerAdmin,
   EmployerAdminCreate,
@@ -389,6 +391,162 @@ export async function getAnalysis(id: string): Promise<AnalysisResponse> {
 
   return response.json();
 }
+
+export async function createBatchAnalysis(
+  payload: BatchAnalysisCreate
+): Promise<BatchAnalysisResponse> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  } else if (guestToken) {
+    headers["X-Guest-Session-Token"] = guestToken;
+  }
+
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/batches/analyses`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (response.status === 401) {
+    const errData = await response.json().catch(() => ({}));
+    if (errData.detail === "SESSION_INVALID") {
+      if (
+        !authToken &&
+        guestToken &&
+        getAuthToken() === authToken &&
+        getGuestToken() === guestToken
+      ) {
+        clearGuestToken();
+      }
+      const err = new Error(
+        "Phiên khách đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại yêu cầu để bắt đầu phiên mới."
+      );
+      (err as unknown as { code: string }).code = "SESSION_INVALID";
+      throw err;
+    }
+    throw new Error("Phiên làm việc không hợp lệ.");
+  }
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After") || "60";
+    throw new Error(
+      `Quá giới hạn tần suất yêu cầu. Vui lòng thử lại sau ${retryAfter} giây.`
+    );
+  }
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(apiErrorMessage(errData, `Lỗi yêu cầu: ${response.status}`));
+  }
+
+  const data: BatchAnalysisResponse & { guest_session_token?: string | null } =
+    await response.json();
+  if (
+    data.guest_session_token &&
+    !authToken &&
+    getAuthToken() === authToken &&
+    getGuestToken() === guestToken
+  ) {
+    setGuestToken(data.guest_session_token);
+  }
+
+  return data;
+}
+
+export async function getBatchAnalysis(
+  batchId: string
+): Promise<BatchAnalysisResponse> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  } else if (guestToken) {
+    headers["X-Guest-Session-Token"] = guestToken;
+  }
+
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/batches/analyses/${batchId}`,
+    {
+      method: "GET",
+      headers,
+    }
+  );
+
+  if (response.status === 404) {
+    throw Object.assign(
+      new Error("Không tìm thấy kết quả phân tích theo lô hoặc phiên làm việc đã hết hạn."),
+      { status: response.status }
+    );
+  }
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw Object.assign(
+      new Error(apiErrorMessage(errData, `Lỗi đọc kết quả phân tích theo lô: ${response.status}`)),
+      { status: response.status }
+    );
+  }
+
+  return response.json();
+}
+
+export async function cancelBatchAnalysis(
+  batchId: string
+): Promise<BatchAnalysisResponse> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  } else if (guestToken) {
+    headers["X-Guest-Session-Token"] = guestToken;
+  }
+
+  const response = await authenticatedFetch(
+    `${getApiBaseUrl()}/api/v1/batches/analyses/${batchId}/cancel`,
+    {
+      method: "POST",
+      headers,
+    }
+  );
+
+  if (response.status === 404) {
+    throw new Error("Không tìm thấy đợt phân tích để hủy.");
+  }
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw Object.assign(
+      new Error(apiErrorMessage(errData, `Lỗi hủy phân tích theo lô: ${response.status}`)),
+      { status: response.status }
+    );
+  }
+
+  return response.json();
+}
+
+export const apiClient = {
+  createAnalysis,
+  getAnalysis,
+  createBatchAnalysis,
+  getBatchAnalysis,
+  cancelBatchAnalysis,
+};
 
 export async function createVerification(
   payload: VerificationCreate,
